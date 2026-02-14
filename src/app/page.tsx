@@ -38,7 +38,7 @@ export default function Home() {
         onDelete={deleteDocument}
       />
 
-      <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+      <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
         <TradingWidgets />
         <EmailBar />
         <div className="flex-1">
