@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { ChevronDown, ChevronUp, MessageCircle, Send, X } from "lucide-react";
+import { MessageCircle, Send, Minus, X } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
 
 export default function ChatPanel() {
@@ -10,18 +10,27 @@ export default function ChatPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Floating button when closed
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height =
+        Math.min(textareaRef.current.scrollHeight, 100) + "px";
+    }
+  }, [input]);
+
   if (!isOpen) {
     return (
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500 hover:scale-105"
+        className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-500 hover:scale-105"
       >
         <MessageCircle className="h-5 w-5" />
       </button>
@@ -31,78 +40,84 @@ export default function ChatPanel() {
   return (
     <div
       className={clsx(
-        "fixed bottom-6 right-6 z-50 flex flex-col rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/50 transition-all",
-        isMinimized ? "w-[300px]" : "w-[360px]"
+        "fixed bottom-5 right-5 z-50 flex flex-col rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60",
+        isMinimized ? "w-[280px]" : "w-[380px]"
       )}
+      style={{ maxHeight: isMinimized ? "auto" : "70vh" }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800/50">
         <div className="flex items-center gap-2">
-          <div className="rounded-full bg-indigo-500/20 p-1.5 text-indigo-400">
-            <MessageCircle className="h-3.5 w-3.5" />
+          <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center">
+            <span className="text-white text-xs font-bold">F</span>
           </div>
-          <span className="text-sm font-semibold text-zinc-100">Fred</span>
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <div>
+            <div className="text-sm font-semibold text-zinc-100 leading-tight">Fred</div>
+            <div className="text-[10px] text-emerald-400">online</div>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => setIsMinimized(!isMinimized)}
-            className="rounded p-1 text-zinc-500 hover:text-zinc-300"
+            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
           >
-            {isMinimized ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
+            <Minus className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="rounded p-1 text-zinc-500 hover:text-zinc-300"
+            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Body - hidden when minimized */}
       {!isMinimized && (
         <>
           {/* Messages */}
-          <div className="h-[300px] space-y-3 overflow-y-auto px-4 py-4 text-sm">
-            {messages.length === 0 ? (
-              <div className="rounded-lg bg-zinc-900/60 p-3 text-xs text-zinc-500">
-                Ask Fred anything — code, markets, docs.
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2" style={{ maxHeight: "calc(70vh - 120px)", minHeight: "200px" }}>
+            {messages.length === 0 && (
+              <div className="text-center py-8">
+                <div className="text-2xl mb-2">⚡</div>
+                <div className="text-xs text-zinc-500">Ask me anything</div>
               </div>
-            ) : (
-              messages.map((message, index) => (
+            )}
+            {messages.map((msg, i) => (
+              <div
+                key={i}
+                className={clsx(
+                  "flex",
+                  msg.role === "user" ? "justify-end" : "justify-start"
+                )}
+              >
                 <div
-                  key={`${message.role}-${index}`}
                   className={clsx(
-                    "max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed",
-                    message.role === "user"
-                      ? "ml-auto bg-indigo-600 text-white"
-                      : "bg-zinc-900/60 text-zinc-200"
+                    "max-w-[80%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
+                    msg.role === "user"
+                      ? "bg-indigo-600 text-white rounded-br-sm"
+                      : "bg-zinc-800 text-zinc-100 rounded-bl-sm"
                   )}
                 >
-                  {message.content || (streaming && index === messages.length - 1 ? "..." : "")}
+                  {msg.content || (streaming && i === messages.length - 1 ? (
+                    <span className="inline-flex gap-1">
+                      <span className="animate-pulse">●</span>
+                      <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>●</span>
+                      <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>●</span>
+                    </span>
+                  ) : "")}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void sendMessage();
-            }}
-            className="border-t border-zinc-800 px-3 py-3"
-          >
+          {/* Input - Telegram style */}
+          <div className="border-t border-zinc-800/50 px-3 py-2">
             <div className="flex items-end gap-2">
               <textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -111,20 +126,26 @@ export default function ChatPanel() {
                     void sendMessage();
                   }
                 }}
-                placeholder="Message Fred..."
+                placeholder="Message..."
                 rows={1}
-                className="flex-1 resize-none rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none"
-                style={{ minHeight: "36px", maxHeight: "80px" }}
+                className="flex-1 resize-none rounded-2xl border-0 bg-zinc-900 px-4 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                style={{ minHeight: "36px", maxHeight: "100px" }}
               />
               <button
-                type="submit"
+                type="button"
+                onClick={() => void sendMessage()}
                 disabled={streaming || !input.trim()}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white transition hover:bg-indigo-500 disabled:bg-zinc-700"
+                className={clsx(
+                  "flex h-9 w-9 items-center justify-center rounded-full transition",
+                  input.trim() && !streaming
+                    ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                    : "bg-transparent text-zinc-600"
+                )}
               >
                 <Send className="h-4 w-4" />
               </button>
             </div>
-          </form>
+          </div>
         </>
       )}
     </div>
