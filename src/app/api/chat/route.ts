@@ -13,45 +13,53 @@ const systemPrompt =
   "You are Fred, a sharp, direct AI dev assistant. Be concise, actionable, and avoid fluff.";
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const incoming = Array.isArray(body?.messages) ? body.messages : [];
-  const messages = incoming.map((message: { role: string; content: string }) => ({
-    role: message.role === "assistant" ? "assistant" : "user",
-    content: message.content
-  }));
+  try {
+    const body = await req.json();
+    const incoming = Array.isArray(body?.messages) ? body.messages : [];
+    const messages = incoming.map((message: { role: string; content: string }) => ({
+      role: message.role === "assistant" ? "assistant" as const : "user" as const,
+      content: message.content,
+    }));
 
-  const client = getClient();
-  const stream = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages,
-    stream: true
-  });
+    const client = getClient();
+    const stream = await client.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages,
+      stream: true,
+    });
 
-  const encoder = new TextEncoder();
+    const encoder = new TextEncoder();
 
-  const readable = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const event of stream) {
-          if (event.type === "content_block_delta" && (event as any).delta?.text) {
-            controller.enqueue(encoder.encode((event as any).delta.text));
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (
+              event.type === "content_block_delta" &&
+              "delta" in event &&
+              "text" in (event as any).delta
+            ) {
+              controller.enqueue(encoder.encode((event as any).delta.text));
+            }
           }
+        } catch (error) {
+          console.error("Anthropic stream error", error);
+        } finally {
+          controller.close();
         }
-      } catch (error) {
-        console.error("Anthropic stream error", error);
-      } finally {
-        controller.close();
-      }
-    }
-  });
+      },
+    });
 
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive"
-    }
-  });
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+      },
+    });
+  } catch (error: any) {
+    console.error("Chat API error:", error);
+    return new Response(error?.message || "Internal server error", { status: 500 });
+  }
 }
