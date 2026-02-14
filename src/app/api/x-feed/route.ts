@@ -5,7 +5,7 @@ const API_KEY = "C8ywYbObezn5XwAbCrFMBBSkJ";
 const API_SECRET = "E05ivLuW0miiMKFacW6RHDI09y4pT7OcrRVPNM3LMKEy7OACmO";
 const ACCESS_TOKEN = "2016113405451526144-9HY8DCKCaEMJyesWdhEVkavyECRTB6";
 const ACCESS_SECRET = "smKBnBtIHWBFqcfNQrdTwUoSB6DVRFbsbC5BPxoisGZlT";
-const USER_ID = "2022444401587277824";
+const USER_ID = "2016113405451526144";
 
 function percentEncode(str: string) {
   return encodeURIComponent(str).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
