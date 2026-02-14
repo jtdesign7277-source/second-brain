@@ -1,41 +1,19 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
 export type PanelTarget = "email" | "x" | null;
 
-/* ── X/Twitter embedded timeline ── */
+/* ── X/Twitter timeline via syndication iframe ── */
 function XTimeline() {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Inject the Twitter widget script
-    const script = document.createElement("script");
-    script.src = "https://platform.twitter.com/widgets.js";
-    script.async = true;
-    script.charset = "utf-8";
-    containerRef.current.appendChild(script);
-
-    return () => {
-      script.remove();
-    };
-  }, []);
-
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto px-4 py-4">
-      <a
-        className="twitter-timeline"
-        data-theme="dark"
-        data-chrome="noheader nofooter noborders transparent"
-        data-height="100%"
-        href="https://twitter.com/stratify_hq"
-      >
-        Loading @stratify_hq...
-      </a>
-    </div>
+    <iframe
+      src="https://syndication.twitter.com/srv/timeline-profile/screen-name/stratify_hq?dnt=true&embedId=twitter-widget-0&features=eyJ0ZndfdGltZWxpbmVfbGlzdCI6eyJidWNrZXQiOltdLCJ2ZXJzaW9uIjpudWxsfSwidGZ3X2ZvbGxvd2VyX2NvdW50X3N1bnNldCI6eyJidWNrZXQiOnRydWUsInZlcnNpb24iOm51bGx9LCJ0ZndfdHdlZXRfZWRpdF9iYWNrZW5kIjp7ImJ1Y2tldCI6Im9uIiwidmVyc2lvbiI6bnVsbH0sInRmd19yZWZzcmNfc2Vzc2lvbiI6eyJidWNrZXQiOiJvbiIsInZlcnNpb24iOm51bGx9fQ%3D%3D&frame=false&hideBorder=true&hideFooter=true&hideHeader=true&hideScrollBar=false&lang=en&theme=dark&transparent=true"
+      title="@stratify_hq timeline"
+      className="h-full w-full border-0"
+      sandbox="allow-scripts allow-same-origin allow-popups"
+      style={{ colorScheme: "dark" }}
+    />
   );
 }
 
