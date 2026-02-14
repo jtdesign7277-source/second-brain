@@ -13,39 +13,25 @@ export default function TradingWidgets() {
     const script = document.createElement("script");
     script.type = "text/javascript";
     script.src =
-      "https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js";
+      "https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js";
     script.async = true;
     script.textContent = JSON.stringify({
-      colorTheme: "dark",
-      dateRange: "1D",
-      showChart: true,
-      locale: "en",
       width: "100%",
       height: "100%",
-      largeChartUrl: "",
-      isTransparent: false,
-      showSymbolLogo: true,
-      showFloatingTooltip: false,
-      plotLineColorGrowing: "rgba(34, 197, 94, 1)",
-      plotLineColorFalling: "rgba(239, 68, 68, 1)",
-      gridLineColor: "rgba(24, 24, 27, 0)",
-      scaleFontColor: "rgba(161, 161, 170, 1)",
-      belowLineFillColorGrowing: "rgba(34, 197, 94, 0.12)",
-      belowLineFillColorFalling: "rgba(239, 68, 68, 0.12)",
-      belowLineFillColorGrowingBottom: "rgba(34, 197, 94, 0)",
-      belowLineFillColorFallingBottom: "rgba(239, 68, 68, 0)",
-      symbolActiveColor: "rgba(99, 102, 241, 0.12)",
-      tabs: [
+      symbolsGroups: [
         {
-          title: "Watchlist",
+          name: "Watchlist",
           symbols: [
-            { s: "NASDAQ:TSLA", d: "Tesla" },
-            { s: "NASDAQ:QQQ", d: "Nasdaq 100 ETF" },
-            { s: "BITSTAMP:BTCUSD", d: "Bitcoin" },
+            { name: "NASDAQ:TSLA", displayName: "Tesla" },
+            { name: "NASDAQ:QQQ", displayName: "QQQ" },
+            { name: "BITSTAMP:BTCUSD", displayName: "Bitcoin" },
           ],
-          originalTitle: "Watchlist",
         },
       ],
+      showSymbolLogo: true,
+      isTransparent: false,
+      colorTheme: "dark",
+      locale: "en",
     });
 
     const widgetContainer = document.createElement("div");
@@ -64,7 +50,7 @@ export default function TradingWidgets() {
   }, []);
 
   return (
-    <div className="h-[350px] w-full overflow-hidden rounded-lg bg-[#131722] border border-zinc-800">
+    <div className="h-[200px] w-full overflow-hidden rounded-lg">
       <div ref={ref} style={{ height: "100%", width: "100%" }} />
     </div>
   );
