@@ -16,6 +16,7 @@ export default function Home() {
     search,
     setSearch,
     selectDocument,
+    deselectDocument,
     createDocument,
     updateDocument,
     deleteDocument,
@@ -42,7 +43,7 @@ export default function Home() {
         <TradingWidgets />
         <EmailBar />
         <div className="flex-1">
-          <DocumentViewer document={selected} onSave={updateDocument} />
+          <DocumentViewer document={selected} onSave={updateDocument} onClose={deselectDocument} />
         </div>
       </main>
 

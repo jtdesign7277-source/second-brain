@@ -27,6 +27,7 @@ export type DocumentsState = {
   search: string;
   setSearch: (value: string) => void;
   selectDocument: (doc: DocumentItem) => void;
+  deselectDocument: () => void;
   createDocument: () => Promise<void>;
   updateDocument: (doc: DocumentItem) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
@@ -142,6 +143,10 @@ export function useDocuments(): DocumentsState {
     setSelected(doc);
   }, []);
 
+  const deselectDocument = useCallback(() => {
+    setSelected(null);
+  }, []);
+
   const refresh = useCallback(async () => {
     const docs = await loadAll();
     setDocuments(docs);
@@ -154,6 +159,7 @@ export function useDocuments(): DocumentsState {
     search,
     setSearch,
     selectDocument,
+    deselectDocument,
     createDocument,
     updateDocument,
     deleteDocument,

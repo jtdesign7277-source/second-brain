@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Eye, Save } from "lucide-react";
+import { ArrowLeft, Pencil, Eye, Save } from "lucide-react";
 import type { DocumentItem } from "@/types/documents";
 
 export type DocumentViewerProps = {
   document: DocumentItem | null;
   onSave: (doc: DocumentItem) => Promise<void>;
+  onClose: () => void;
 };
 
 function RenderedMarkdown({ content }: { content: string }) {
@@ -35,7 +36,7 @@ function RenderedMarkdown({ content }: { content: string }) {
   );
 }
 
-export default function DocumentViewer({ document, onSave }: DocumentViewerProps) {
+export default function DocumentViewer({ document, onSave, onClose }: DocumentViewerProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -77,7 +78,18 @@ export default function DocumentViewer({ document, onSave }: DocumentViewerProps
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-base font-semibold text-zinc-100 truncate">{document.title}</h1>
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-2 py-1.5 text-xs text-zinc-400 transition hover:bg-zinc-700 hover:text-zinc-100 shrink-0"
+            title="Close document"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back
+          </button>
+          <h1 className="text-base font-semibold text-zinc-100 truncate">{document.title}</h1>
+        </div>
         <div className="flex items-center gap-1.5 ml-3 shrink-0">
           {editing && (
             <button
