@@ -1,10 +1,11 @@
 "use client";
 
-import { Brain, ChevronRight, Clock, FolderOpen, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Clock, FolderOpen, Plus, Search, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useMemo, useState } from "react";
 import type { DocumentItem } from "@/types/documents";
-import { CRON_FOLDERS, getCronFolder, isCronFolder } from "@/lib/cronFolders";
+import { CRON_FOLDERS, getCronFolder } from "@/lib/cronFolders";
+import StockSearch from "./StockSearch";
 
 export type SidebarProps = {
   documents: DocumentItem[];
@@ -116,14 +117,8 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="px-6 pt-5">
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 rounded-md border border-zinc-700/60 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 transition hover:border-transparent hover:bg-gradient-to-r hover:from-violet-600 hover:via-indigo-600 hover:to-cyan-500"
-        >
-          <Brain className="h-4 w-4" />
-          Stock Search
-        </button>
+      <div className="px-4 pt-5">
+        <StockSearch />
       </div>
 
       <div className="px-6 pt-4">
