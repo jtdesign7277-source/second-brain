@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, ExternalLink, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw } from "lucide-react";
 import clsx from "clsx";
 
 export type PanelTarget = "x" | null;
@@ -17,6 +17,7 @@ type Tweet = {
     impression_count: number;
   };
   referenced_tweets?: { type: string; id: string }[];
+  author?: { name: string; username: string } | null;
 };
 
 function timeAgo(dateStr: string): string {
@@ -29,93 +30,83 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-function formatNum(n: number): string {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
-  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+function fmtN(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
   return n.toString();
 }
 
-function TweetCard({ tweet }: { tweet: Tweet }) {
+function TweetCard({ tweet, defaultAuthor }: { tweet: Tweet; defaultAuthor?: string }) {
   const m = tweet.public_metrics;
-  const isReply = tweet.referenced_tweets?.some((r) => r.type === "replied_to");
-  const isRetweet = tweet.referenced_tweets?.some((r) => r.type === "retweeted");
-  const isQuote = tweet.referenced_tweets?.some((r) => r.type === "quoted");
+  const author = tweet.author;
+  const displayName = author?.name ?? "Stratify";
+  const handle = author?.username ?? defaultAuthor ?? "stratify_hq";
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <a
-      href={`https://x.com/stratify_hq/status/${tweet.id}`}
+      href={`https://x.com/${handle}/status/${tweet.id}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="block rounded-xl border border-zinc-800/60 bg-zinc-900/40 px-4 py-3 transition hover:border-zinc-700 hover:bg-zinc-900/70"
+      className="block rounded-lg border border-zinc-800/50 bg-zinc-900/30 px-3 py-2.5 transition hover:border-zinc-700 hover:bg-zinc-900/60"
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-2">
-        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center">
-          <span className="text-white text-xs font-bold">S</span>
+      <div className="flex items-start gap-2">
+        <div className="h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center mt-0.5">
+          <span className="text-white text-[10px] font-bold">{initial}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-semibold text-zinc-100">Stratify</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-sky-400">
-              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-            </svg>
-            <span className="text-xs text-zinc-500">@stratify_hq</span>
-            <span className="text-xs text-zinc-600">· {timeAgo(tweet.created_at)}</span>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-xs font-semibold text-zinc-200 truncate">{displayName}</span>
+            <span className="text-[10px] text-zinc-500 truncate">@{handle}</span>
+            <span className="text-[10px] text-zinc-600">· {timeAgo(tweet.created_at)}</span>
           </div>
-          {(isReply || isRetweet || isQuote) && (
-            <div className="text-[10px] text-zinc-500 mt-0.5">
-              {isReply && "↩ Reply"}
-              {isRetweet && "🔁 Repost"}
-              {isQuote && "💬 Quote"}
+          <p className="text-xs text-zinc-300 leading-relaxed mt-1 whitespace-pre-wrap break-words">
+            {tweet.text}
+          </p>
+          {m && (
+            <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-600">
+              <span className="flex items-center gap-0.5">
+                <MessageCircle className="h-3 w-3" />
+                {m.reply_count > 0 && fmtN(m.reply_count)}
+              </span>
+              <span className="flex items-center gap-0.5">
+                <Repeat2 className="h-3 w-3" />
+                {m.retweet_count > 0 && fmtN(m.retweet_count)}
+              </span>
+              <span className="flex items-center gap-0.5">
+                <Heart className="h-3 w-3" />
+                {m.like_count > 0 && fmtN(m.like_count)}
+              </span>
+              {m.impression_count > 0 && (
+                <span className="flex items-center gap-0.5">
+                  <BarChart3 className="h-3 w-3" />
+                  {fmtN(m.impression_count)}
+                </span>
+              )}
             </div>
           )}
         </div>
       </div>
-
-      {/* Text */}
-      <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap break-words">
-        {tweet.text}
-      </p>
-
-      {/* Metrics */}
-      {m && (
-        <div className="flex items-center gap-5 mt-3 text-xs text-zinc-500">
-          <span className="flex items-center gap-1 hover:text-sky-400 transition">
-            <MessageCircle className="h-3.5 w-3.5" />
-            {m.reply_count > 0 && formatNum(m.reply_count)}
-          </span>
-          <span className="flex items-center gap-1 hover:text-emerald-400 transition">
-            <Repeat2 className="h-3.5 w-3.5" />
-            {m.retweet_count > 0 && formatNum(m.retweet_count)}
-          </span>
-          <span className="flex items-center gap-1 hover:text-pink-400 transition">
-            <Heart className="h-3.5 w-3.5" />
-            {m.like_count > 0 && formatNum(m.like_count)}
-          </span>
-          <span className="flex items-center gap-1">
-            <BarChart3 className="h-3.5 w-3.5" />
-            {m.impression_count > 0 && formatNum(m.impression_count)}
-          </span>
-        </div>
-      )}
     </a>
   );
 }
 
-/* ── X Feed Panel ── */
+/* ── X Feed with tabs ── */
 function XFeed() {
+  const [tab, setTab] = useState<"mine" | "following">("mine");
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTweets = async () => {
+  const fetchTweets = useCallback(async (feed: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/x-feed");
+      const res = await fetch(`/api/x-feed?feed=${feed}`);
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to load");
+        setTweets([]);
       } else {
         setTweets(data.data ?? []);
       }
@@ -124,47 +115,79 @@ function XFeed() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchTweets();
-  }, []);
+    fetchTweets(tab);
+  }, [tab, fetchTweets]);
 
   return (
     <div className="flex h-full flex-col">
-      {/* Refresh bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800/50">
-        <span className="text-xs text-zinc-500">{tweets.length} tweets</span>
+      {/* Tabs */}
+      <div className="flex border-b border-zinc-800/50">
         <button
           type="button"
-          onClick={fetchTweets}
-          disabled={loading}
-          className="flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
+          onClick={() => setTab("mine")}
+          className={clsx(
+            "flex-1 py-2 text-[11px] font-medium transition border-b-2",
+            tab === "mine"
+              ? "text-sky-400 border-sky-400"
+              : "text-zinc-500 border-transparent hover:text-zinc-300"
+          )}
         >
-          <RefreshCw className={clsx("h-3 w-3", loading && "animate-spin")} />
+          My Tweets
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("following")}
+          className={clsx(
+            "flex-1 py-2 text-[11px] font-medium transition border-b-2",
+            tab === "following"
+              ? "text-sky-400 border-sky-400"
+              : "text-zinc-500 border-transparent hover:text-zinc-300"
+          )}
+        >
+          Following
+        </button>
+      </div>
+
+      {/* Refresh */}
+      <div className="flex items-center justify-between px-3 py-1.5">
+        <span className="text-[10px] text-zinc-600">{tweets.length} tweets</span>
+        <button
+          type="button"
+          onClick={() => fetchTweets(tab)}
+          disabled={loading}
+          className="flex items-center gap-1 text-[10px] text-zinc-600 transition hover:text-zinc-300"
+        >
+          <RefreshCw className={clsx("h-2.5 w-2.5", loading && "animate-spin")} />
           Refresh
         </button>
       </div>
 
       {/* Feed */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+      <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-1.5">
         {loading && tweets.length === 0 && (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className="h-5 w-5 animate-spin text-zinc-600" />
+            <RefreshCw className="h-4 w-4 animate-spin text-zinc-600" />
           </div>
         )}
         {error && (
-          <div className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+          <div className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>
         )}
         {tweets.map((tweet) => (
-          <TweetCard key={tweet.id} tweet={tweet} />
+          <TweetCard
+            key={tweet.id}
+            tweet={tweet}
+            defaultAuthor={tab === "mine" ? "stratify_hq" : undefined}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-/* ── Split Panel Container ── */
+/* ── Split Panel ── */
 export default function SplitPanel({
   onClose,
 }: {
