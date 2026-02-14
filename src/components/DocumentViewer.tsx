@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Pencil, Eye, Save } from "lucide-react";
 import type { DocumentItem } from "@/types/documents";
 
 export type DocumentViewerProps = {
@@ -34,7 +35,17 @@ function RenderedMarkdown({ content }: { content: string }) {
   );
 }
 
-export default function DocumentViewer({ document }: DocumentViewerProps) {
+export default function DocumentViewer({ document, onSave }: DocumentViewerProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // Reset when switching documents
+  useEffect(() => {
+    setEditing(false);
+    setDraft(document?.content ?? "");
+  }, [document]);
+
   if (!document) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-zinc-500">
@@ -44,14 +55,78 @@ export default function DocumentViewer({ document }: DocumentViewerProps) {
     );
   }
 
+  const handleToggle = () => {
+    if (editing) {
+      // Switching back to view — discard unsaved changes
+      setDraft(document.content);
+    } else {
+      // Switching to edit — load current content
+      setDraft(document.content);
+    }
+    setEditing(!editing);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave({ ...document, content: draft });
+    setSaving(false);
+    setEditing(false);
+  };
+
   return (
     <div className="flex h-full flex-col">
-      <h1 className="text-base font-semibold text-zinc-100 mb-3">{document.title}</h1>
-      <div className="flex-1 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30 p-4">
-        {document.content.trim() ? (
-          <RenderedMarkdown content={document.content} />
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-base font-semibold text-zinc-100 truncate">{document.title}</h1>
+        <div className="flex items-center gap-1.5 ml-3 shrink-0">
+          {editing && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || draft === document.content}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
+            >
+              <Save className="h-3 w-3" />
+              {saving ? "Saving..." : "Save"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleToggle}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-zinc-700"
+          >
+            {editing ? (
+              <>
+                <Eye className="h-3 w-3" />
+                View
+              </>
+            ) : (
+              <>
+                <Pencil className="h-3 w-3" />
+                Edit
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Content area — same spot, toggles between rendered and editable */}
+      <div className="flex-1 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30">
+        {editing ? (
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="h-full w-full resize-none bg-transparent p-4 text-sm font-mono text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+            placeholder="Edit content..."
+          />
         ) : (
-          <p className="text-zinc-500 text-sm">Empty document.</p>
+          <div className="p-4">
+            {document.content.trim() ? (
+              <RenderedMarkdown content={document.content} />
+            ) : (
+              <p className="text-zinc-500 text-sm">Empty document. Click Edit to add content.</p>
+            )}
+          </div>
         )}
       </div>
     </div>
