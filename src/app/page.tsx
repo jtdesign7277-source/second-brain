@@ -51,7 +51,7 @@ export default function Home() {
 
       <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
         <TradingWidgets />
-        <EmailBar onOpenPanel={() => setSplitPanel((prev) => prev === "x" ? null : "x")} />
+        <EmailBar onOpenPanel={(target) => setSplitPanel((prev) => prev === target ? null : target)} />
 
         <div className="flex-1 min-h-0">
           {hasDocument ? (

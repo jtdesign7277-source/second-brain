@@ -9,9 +9,9 @@ export default function EmailBar({
 }) {
   return (
     <div className="flex items-center justify-center gap-3 py-2">
-      {/* Email pill — opens native compose directly */}
-      <a
-        href="mailto:jeff@stratify-associates.com"
+      <button
+        type="button"
+        onClick={() => onOpenPanel?.("email")}
         className="group flex items-center gap-2.5 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-5 py-2.5 text-sm text-zinc-300 transition hover:border-emerald-500/50 hover:text-emerald-400"
       >
         <svg
@@ -26,9 +26,8 @@ export default function EmailBar({
           <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
         </svg>
         jeff@stratify-associates.com
-      </a>
+      </button>
 
-      {/* X handle pill — opens X feed panel */}
       <button
         type="button"
         onClick={() => onOpenPanel?.("x")}
