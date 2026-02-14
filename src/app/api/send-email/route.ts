@@ -17,8 +17,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Jeff via Stratify <onboarding@resend.dev>",
-        reply_to: "jeff@stratify-associates.com",
+        from: "Jeff <jeff@stratify-associates.com>",
         to: Array.isArray(to) ? to : [to],
         subject,
         text: body,
