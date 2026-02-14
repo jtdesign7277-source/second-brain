@@ -4,9 +4,7 @@ import { useEffect, useState } from "react";
 import { ChatFull, ChatFloating, ChatBubble } from "@/components/ChatPanel";
 import DocumentViewer from "@/components/DocumentViewer";
 import EmailBar from "@/components/EmailBar";
-import type { PanelTarget } from "@/components/EmailBar";
 import Sidebar from "@/components/Sidebar";
-import SplitPanel from "@/components/SplitPanel";
 import TradingWidgets from "@/components/TradingWidgets";
 import { useDocuments } from "@/hooks/useDocuments";
 import { seedIfNeeded } from "@/lib/seedDocuments";
@@ -25,7 +23,6 @@ export default function Home() {
   } = useDocuments();
 
   const [floatingChatOpen, setFloatingChatOpen] = useState(false);
-  const [splitPanel, setSplitPanel] = useState<PanelTarget>(null);
 
   useEffect(() => {
     seedIfNeeded();
@@ -50,7 +47,7 @@ export default function Home() {
 
       <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
         <TradingWidgets />
-        <EmailBar onOpenPanel={(target) => setSplitPanel(target)} />
+        <EmailBar />
 
         <div className="flex-1 min-h-0">
           {hasDocument ? (
@@ -67,11 +64,6 @@ export default function Home() {
           )}
         </div>
       </main>
-
-      {/* Split panel (email or X) — slides in from right */}
-      {splitPanel && (
-        <SplitPanel target={splitPanel} onClose={() => setSplitPanel(null)} />
-      )}
 
       {/* Floating chat — only when a document is open */}
       {hasDocument && (
