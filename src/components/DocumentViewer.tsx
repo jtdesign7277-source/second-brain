@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Pencil, Eye, Save } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Pencil, Eye, Save, Volume2, Square } from "lucide-react";
 import type { DocumentItem } from "@/types/documents";
 
 export type DocumentViewerProps = {
@@ -10,6 +10,95 @@ export type DocumentViewerProps = {
   onClose: () => void;
 };
 
+/* ── strip markdown to plain text for TTS ── */
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^- /gm, "")
+    .replace(/^\d+\.\s/gm, "")
+    .replace(/^---$/gm, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
+
+/* ── pick the "brainrot" voice (robotic male US English) ── */
+function pickBrainrotVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices();
+
+  // Priority order — the classic TikTok / Roblox brainrot narration voices
+  const preferred = [
+    "Microsoft David",        // Windows robotic male — the classic one
+    "Google US English",      // Chrome robotic male
+    "Daniel",                 // macOS UK male — flat & robotic
+    "Alex",                   // macOS US male — monotone
+    "Samantha",               // fallback macOS
+  ];
+
+  for (const name of preferred) {
+    const match = voices.find(
+      (v) => v.name.includes(name) && v.lang.startsWith("en")
+    );
+    if (match) return match;
+  }
+
+  // Fallback: any English male-ish voice
+  return (
+    voices.find((v) => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ??
+    voices.find((v) => v.lang.startsWith("en")) ??
+    null
+  );
+}
+
+/* ── useSpeech hook ── */
+function useSpeech() {
+  const [speaking, setSpeaking] = useState(false);
+  const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const speak = useCallback((text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+    // Cancel any current speech
+    window.speechSynthesis.cancel();
+
+    const plain = stripMarkdown(text);
+    if (!plain) return;
+
+    const utter = new SpeechSynthesisUtterance(plain);
+    const voice = pickBrainrotVoice();
+    if (voice) utter.voice = voice;
+
+    // Brainrot TTS style: slightly fast, flat pitch
+    utter.rate = 1.15;
+    utter.pitch = 0.85;
+
+    utter.onstart = () => setSpeaking(true);
+    utter.onend = () => setSpeaking(false);
+    utter.onerror = () => setSpeaking(false);
+
+    utterRef.current = utter;
+    window.speechSynthesis.speak(utter);
+  }, []);
+
+  const stop = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }, []);
+
+  // Stop on unmount
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
+
+  return { speaking, speak, stop };
+}
+
+/* ── RenderedMarkdown ── */
 function RenderedMarkdown({ content }: { content: string }) {
   const html = useMemo(() => {
     return content
@@ -36,16 +125,29 @@ function RenderedMarkdown({ content }: { content: string }) {
   );
 }
 
+/* ── DocumentViewer ── */
 export default function DocumentViewer({ document, onSave, onClose }: DocumentViewerProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const { speaking, speak, stop } = useSpeech();
+
+  // Load voices (Chrome loads them async)
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
 
   // Reset when switching documents
   useEffect(() => {
     setEditing(false);
     setDraft(document?.content ?? "");
-  }, [document]);
+    stop(); // Stop speaking when switching docs
+  }, [document, stop]);
 
   if (!document) {
     return (
@@ -58,10 +160,8 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
 
   const handleToggle = () => {
     if (editing) {
-      // Switching back to view — discard unsaved changes
       setDraft(document.content);
     } else {
-      // Switching to edit — load current content
       setDraft(document.content);
     }
     setEditing(!editing);
@@ -72,6 +172,14 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
     await onSave({ ...document, content: draft });
     setSaving(false);
     setEditing(false);
+  };
+
+  const handleSpeak = () => {
+    if (speaking) {
+      stop();
+    } else {
+      speak(document.content);
+    }
   };
 
   return (
@@ -91,6 +199,30 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
           <h1 className="text-base font-semibold text-zinc-100 truncate">{document.title}</h1>
         </div>
         <div className="flex items-center gap-1.5 ml-3 shrink-0">
+          {/* Speak button */}
+          <button
+            type="button"
+            onClick={handleSpeak}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+              speaking
+                ? "border-red-500/50 bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                : "border-violet-500/50 bg-violet-500/20 text-violet-300 hover:bg-violet-500/30"
+            }`}
+            title={speaking ? "Stop reading" : "Read document aloud"}
+          >
+            {speaking ? (
+              <>
+                <Square className="h-3 w-3" />
+                Stop
+              </>
+            ) : (
+              <>
+                <Volume2 className="h-3 w-3" />
+                Speak
+              </>
+            )}
+          </button>
+
           {editing && (
             <button
               type="button"
@@ -122,7 +254,7 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
         </div>
       </div>
 
-      {/* Content area — same spot, toggles between rendered and editable */}
+      {/* Content area */}
       <div className="flex-1 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30">
         {editing ? (
           <textarea
