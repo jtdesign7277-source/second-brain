@@ -204,7 +204,7 @@ export default function SplitPanel({
   const isX = target === "x";
 
   return (
-    <div className="flex h-full w-[480px] shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
+    <div className="flex h-full w-[320px] shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
       <div className="flex items-center gap-3 border-b border-zinc-800 px-4 py-3">
         <button
           type="button"
