@@ -7,6 +7,7 @@ import EmailBar from "@/components/EmailBar";
 import Sidebar from "@/components/Sidebar";
 import SplitPanel from "@/components/SplitPanel";
 import type { PanelTarget } from "@/components/SplitPanel";
+// X panel only - email opens native compose
 import TradingWidgets from "@/components/TradingWidgets";
 import { useDocuments } from "@/hooks/useDocuments";
 import { seedIfNeeded } from "@/lib/seedDocuments";
@@ -50,7 +51,7 @@ export default function Home() {
 
       <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
         <TradingWidgets />
-        <EmailBar onOpenPanel={(target) => setSplitPanel((prev) => prev === target ? null : target)} />
+        <EmailBar onOpenPanel={() => setSplitPanel((prev) => prev === "x" ? null : "x")} />
 
         <div className="flex-1 min-h-0">
           {hasDocument ? (
