@@ -1,26 +1,31 @@
 "use client";
 
-function openSplitRight(url: string) {
-  const width = Math.floor(window.screen.availWidth / 2);
-  const height = window.screen.availHeight;
-  const left = Math.floor(window.screen.availWidth / 2);
-  window.open(
+function openSplitRight(url: string, name: string) {
+  // Chrome and Safari respect width/height when "popup" features are specified
+  const screenW = window.screen.availWidth || 1440;
+  const screenH = window.screen.availHeight || 900;
+  const w = Math.floor(screenW / 2);
+  const h = screenH;
+  const x = Math.floor(screenW / 2);
+
+  const popup = window.open(
     url,
-    "_blank",
-    `width=${width},height=${height},left=${left},top=0,menubar=no,toolbar=no,location=yes,status=no`
+    name,
+    `popup=yes,width=${w},height=${h},left=${x},top=0`
   );
-  // Resize current window to left half
-  window.resizeTo(width, height);
-  window.moveTo(0, 0);
+
+  // If popup was blocked, fall back to new tab
+  if (!popup) {
+    window.open(url, "_blank");
+  }
 }
 
 export default function EmailBar() {
   return (
     <div className="flex items-center justify-center gap-3 py-2">
-      {/* Email pill */}
       <button
         type="button"
-        onClick={() => openSplitRight("https://mail.google.com")}
+        onClick={() => openSplitRight("https://mail.google.com", "secondbrain_email")}
         className="group flex items-center gap-2.5 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-5 py-2.5 text-sm text-zinc-300 transition hover:border-emerald-500/50 hover:text-emerald-400"
       >
         <svg
@@ -37,10 +42,9 @@ export default function EmailBar() {
         jeff@stratify-associates.com
       </button>
 
-      {/* X handle pill */}
       <button
         type="button"
-        onClick={() => openSplitRight("https://x.com/stratify_hq")}
+        onClick={() => openSplitRight("https://x.com/stratify_hq", "secondbrain_x")}
         className="group flex items-center gap-2.5 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-5 py-2.5 text-sm text-zinc-300 transition hover:border-emerald-500/50 hover:text-emerald-400"
       >
         <svg
