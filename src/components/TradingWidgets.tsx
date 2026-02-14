@@ -2,13 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-const tickers = [
-  { symbol: "AMEX:SPY", name: "S&P 500 ETF" },
-  { symbol: "NASDAQ:AAPL", name: "Apple" },
-  { symbol: "BITSTAMP:BTCUSD", name: "Bitcoin" },
-];
-
-function TradingViewCard({ symbol }: { symbol: string }) {
+export default function TradingWidgets() {
   const ref = useRef<HTMLDivElement>(null);
   const loaded = useRef(false);
 
@@ -16,23 +10,42 @@ function TradingViewCard({ symbol }: { symbol: string }) {
     if (!ref.current || loaded.current) return;
     loaded.current = true;
 
-    // Use TradingView's standard mini symbol overview iframe widget
-    const container = ref.current;
     const script = document.createElement("script");
     script.type = "text/javascript";
     script.src =
-      "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+      "https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js";
     script.async = true;
     script.textContent = JSON.stringify({
-      symbol: symbol,
+      colorTheme: "dark",
+      dateRange: "1D",
+      showChart: true,
+      locale: "en",
       width: "100%",
       height: "100%",
-      locale: "en",
-      dateRange: "1D",
-      colorTheme: "dark",
-      isTransparent: true,
-      autosize: true,
       largeChartUrl: "",
+      isTransparent: true,
+      showSymbolLogo: true,
+      showFloatingTooltip: false,
+      plotLineColorGrowing: "rgba(34, 197, 94, 1)",
+      plotLineColorFalling: "rgba(239, 68, 68, 1)",
+      gridLineColor: "rgba(24, 24, 27, 0)",
+      scaleFontColor: "rgba(161, 161, 170, 1)",
+      belowLineFillColorGrowing: "rgba(34, 197, 94, 0.12)",
+      belowLineFillColorFalling: "rgba(239, 68, 68, 0.12)",
+      belowLineFillColorGrowingBottom: "rgba(34, 197, 94, 0)",
+      belowLineFillColorFallingBottom: "rgba(239, 68, 68, 0)",
+      symbolActiveColor: "rgba(99, 102, 241, 0.12)",
+      tabs: [
+        {
+          title: "Watchlist",
+          symbols: [
+            { s: "NASDAQ:TSLA", d: "Tesla" },
+            { s: "NASDAQ:QQQ", d: "Nasdaq 100 ETF" },
+            { s: "BITSTAMP:BTCUSD", d: "Bitcoin" },
+          ],
+          originalTitle: "Watchlist",
+        },
+      ],
     });
 
     const widgetContainer = document.createElement("div");
@@ -47,22 +60,12 @@ function TradingViewCard({ symbol }: { symbol: string }) {
 
     widgetContainer.appendChild(widgetInner);
     widgetContainer.appendChild(script);
-    container.appendChild(widgetContainer);
-  }, [symbol]);
+    ref.current.appendChild(widgetContainer);
+  }, []);
 
   return (
-    <div className="h-[170px] w-full overflow-hidden rounded-lg bg-[#131722]">
+    <div className="h-[350px] w-full overflow-hidden rounded-lg bg-[#131722] border border-zinc-800">
       <div ref={ref} style={{ height: "100%", width: "100%" }} />
-    </div>
-  );
-}
-
-export default function TradingWidgets() {
-  return (
-    <div className="grid gap-3 md:grid-cols-3">
-      {tickers.map((t) => (
-        <TradingViewCard key={t.symbol} symbol={t.symbol} />
-      ))}
     </div>
   );
 }
