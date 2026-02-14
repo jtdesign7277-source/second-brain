@@ -7,7 +7,7 @@ const seedDocs: Omit<DocumentItem, "id">[] = [
   {
     user_id: "local",
     title: "📅 February 14, 2026 — Daily Summary",
-    folder: "daily-summaries",
+    folder: "2026-02-14 — Second Brain Rebuild",
     created_at: "2026-02-14T12:00:00.000Z",
     updated_at: "2026-02-14T20:00:00.000Z",
     content: `# February 14, 2026 — Valentine's Day
@@ -52,7 +52,7 @@ const seedDocs: Omit<DocumentItem, "id">[] = [
   {
     user_id: "local",
     title: "🔧 Vercel Environment Variables",
-    folder: "vercel",
+    folder: "2026-02-14 — Second Brain Rebuild",
     created_at: "2026-02-14T14:00:00.000Z",
     updated_at: "2026-02-14T14:00:00.000Z",
     content: `# Vercel Environment Variables — Second Brain
@@ -70,7 +70,7 @@ const seedDocs: Omit<DocumentItem, "id">[] = [
   {
     user_id: "local",
     title: "💳 Stripe Integration — Live",
-    folder: "vercel",
+    folder: "2026-02-14 — Second Brain Rebuild",
     created_at: "2026-02-14T14:30:00.000Z",
     updated_at: "2026-02-14T14:30:00.000Z",
     content: `# Stripe Integration — Live ✅
@@ -99,7 +99,7 @@ const seedDocs: Omit<DocumentItem, "id">[] = [
   {
     user_id: "local",
     title: "📊 Market Intel — Feb 14, 2026",
-    folder: "market-intel",
+    folder: "2026-02-14 — Second Brain Rebuild",
     created_at: "2026-02-14T16:00:00.000Z",
     updated_at: "2026-02-14T16:00:00.000Z",
     content: `# Market Intel — Sat Feb 14, 4:00 PM ET

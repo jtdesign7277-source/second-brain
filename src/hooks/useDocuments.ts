@@ -59,12 +59,14 @@ export function useDocuments(): DocumentsState {
 
   const createDocument = useCallback(async () => {
     const now = new Date().toISOString();
+    const today = new Date();
+    const dateStr = today.toLocaleDateString("en-CA"); // YYYY-MM-DD
     const doc: DocumentItem = {
       id: crypto.randomUUID(),
       user_id: "local",
       title: "Untitled",
       content: "",
-      folder: null,
+      folder: dateStr,
       created_at: now,
       updated_at: now,
     };
