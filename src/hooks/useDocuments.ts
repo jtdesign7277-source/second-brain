@@ -75,7 +75,6 @@ export function useDocuments(): DocumentsState {
   useEffect(() => {
     loadAll().then((docs) => {
       setDocuments(docs);
-      if (docs.length > 0) setSelected(docs[0]);
       setLoading(false);
     });
   }, [loadAll]);
