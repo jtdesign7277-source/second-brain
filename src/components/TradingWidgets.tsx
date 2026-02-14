@@ -1,51 +1,52 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 const symbols = [
-  { symbol: "AMEX:SPY", title: "SPY" },
-  { symbol: "NASDAQ:AAPL", title: "AAPL" },
-  { symbol: "BINANCE:BTCUSDT", title: "BTC" }
+  { symbol: "SPY", name: "SPY" },
+  { symbol: "AAPL", name: "AAPL" },
+  { symbol: "BTCUSD", name: "BTC" },
 ];
 
-function buildTradingViewSrc(symbol: string) {
-  const params = new URLSearchParams({
-    symbol,
-    interval: "60",
-    hidetoptoolbar: "1",
-    hidelegend: "1",
-    saveimage: "0",
-    toolbarbg: "#131722",
-    studies: "",
-    theme: "dark",
-    style: "1",
-    timezone: "Etc/UTC",
-    withdateranges: "0",
-    allow_symbol_change: "0",
-    details: "0",
-    hotlist: "0",
-    calendar: "0",
-    hideideas: "1",
-    locale: "en"
-  });
+function MiniChart({ symbol, name }: { symbol: string; name: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.innerHTML = "";
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      symbol: symbol,
+      width: "100%",
+      height: "100%",
+      locale: "en",
+      dateRange: "1D",
+      colorTheme: "dark",
+      isTransparent: true,
+      autosize: true,
+      largeChartUrl: "",
+      noTimeScale: true,
+      chartOnly: true,
+    });
+
+    containerRef.current.appendChild(script);
+  }, [symbol]);
+
+  return (
+    <div className="h-[170px] overflow-hidden rounded-lg bg-[#131722] border border-zinc-800">
+      <div ref={containerRef} className="h-full w-full" />
+    </div>
+  );
 }
 
 export default function TradingWidgets() {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-3 md:grid-cols-3">
       {symbols.map((item) => (
-        <div
-          key={item.symbol}
-          className="h-[170px] overflow-hidden rounded-xl border border-zinc-800 bg-[#131722]"
-        >
-          <iframe
-            title={item.title}
-            src={buildTradingViewSrc(item.symbol)}
-            className="h-full w-full"
-            allowTransparency
-            loading="lazy"
-          />
-        </div>
+        <MiniChart key={item.symbol} symbol={item.symbol} name={item.name} />
       ))}
     </div>
   );

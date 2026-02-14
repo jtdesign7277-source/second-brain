@@ -30,38 +30,65 @@ export function useChat(): ChatState {
     setInput("");
     setStreaming(true);
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: nextMessages })
-    });
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages }),
+      });
 
-    if (!res.ok || !res.body) {
-      setStreaming(false);
-      return;
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let done = false;
-
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      const chunkValue = decoder.decode(value || new Uint8Array(), { stream: !done });
-      if (chunkValue) {
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => "Unknown error");
         setMessages((prev) => {
           const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last && last.role === "assistant") {
-            updated[updated.length - 1] = {
-              ...last,
-              content: last.content + chunkValue
-            };
-          }
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: `Error: ${res.status} — ${errorText}`,
+          };
           return updated;
         });
+        setStreaming(false);
+        return;
       }
+
+      if (!res.body) {
+        setStreaming(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunkValue = decoder.decode(value || new Uint8Array(), {
+          stream: !done,
+        });
+        if (chunkValue) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            if (last && last.role === "assistant") {
+              updated[updated.length - 1] = {
+                ...last,
+                content: last.content + chunkValue,
+              };
+            }
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: `Error: ${err instanceof Error ? err.message : "Connection failed"}`,
+        };
+        return updated;
+      });
     }
 
     setStreaming(false);
@@ -72,6 +99,6 @@ export function useChat(): ChatState {
     input,
     setInput,
     sendMessage,
-    streaming
+    streaming,
   };
 }
