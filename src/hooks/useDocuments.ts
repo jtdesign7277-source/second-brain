@@ -40,12 +40,53 @@ export function useDocuments(): DocumentsState {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const docs = loadDocs();
-    setDocuments(docs);
-    if (docs.length > 0) setSelected(docs[0]);
-    setLoading(false);
+  // Load local docs + fetch cron docs from API
+  const loadAll = useCallback(async () => {
+    const localDocs = loadDocs();
+
+    // Try to fetch cron-submitted docs from API
+    let cronDocs: DocumentItem[] = [];
+    try {
+      const res = await fetch("/api/documents");
+      if (res.ok) {
+        const data = await res.json();
+        cronDocs = (data.documents ?? []).map((d: Record<string, string>) => ({
+          id: d.id,
+          user_id: "cron",
+          title: d.title,
+          content: d.content,
+          folder: d.folder,
+          created_at: d.created_at,
+          updated_at: d.created_at,
+        }));
+      }
+    } catch {
+      // API unavailable, just use local docs
+    }
+
+    // Merge: local docs + cron docs (dedupe by id)
+    const localIds = new Set(localDocs.map((d) => d.id));
+    const merged = [...localDocs, ...cronDocs.filter((d) => !localIds.has(d.id))];
+
+    return merged;
   }, []);
+
+  useEffect(() => {
+    loadAll().then((docs) => {
+      setDocuments(docs);
+      if (docs.length > 0) setSelected(docs[0]);
+      setLoading(false);
+    });
+  }, [loadAll]);
+
+  // Poll for new cron docs every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const docs = await loadAll();
+      setDocuments(docs);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [loadAll]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return documents;
@@ -73,7 +114,7 @@ export function useDocuments(): DocumentsState {
     const next = [doc, ...documents];
     setDocuments(next);
     setSelected(doc);
-    saveDocs(next);
+    saveDocs(next.filter((d) => d.user_id !== "cron"));
   }, [documents]);
 
   const updateDocument = useCallback(
@@ -82,7 +123,7 @@ export function useDocuments(): DocumentsState {
       const next = documents.map((d) => (d.id === doc.id ? updated : d));
       setDocuments(next);
       setSelected(updated);
-      saveDocs(next);
+      saveDocs(next.filter((d) => d.user_id !== "cron"));
     },
     [documents]
   );
@@ -92,7 +133,7 @@ export function useDocuments(): DocumentsState {
       const next = documents.filter((d) => d.id !== id);
       setDocuments(next);
       if (selected?.id === id) setSelected(next[0] ?? null);
-      saveDocs(next);
+      saveDocs(next.filter((d) => d.user_id !== "cron"));
     },
     [documents, selected]
   );
@@ -102,9 +143,9 @@ export function useDocuments(): DocumentsState {
   }, []);
 
   const refresh = useCallback(async () => {
-    const docs = loadDocs();
+    const docs = await loadAll();
     setDocuments(docs);
-  }, []);
+  }, [loadAll]);
 
   return {
     documents: filtered,

@@ -1,9 +1,10 @@
 "use client";
 
-import { Brain, ChevronRight, FolderOpen, Plus, Search, Trash2 } from "lucide-react";
+import { Brain, ChevronRight, Clock, FolderOpen, Plus, Search, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useMemo, useState } from "react";
 import type { DocumentItem } from "@/types/documents";
+import { CRON_FOLDERS, getCronFolder, isCronFolder } from "@/lib/cronFolders";
 
 export type SidebarProps = {
   documents: DocumentItem[];
@@ -19,6 +20,7 @@ type FolderGroup = {
   folder: string;
   label: string;
   docs: DocumentItem[];
+  isCron: boolean;
 };
 
 function groupByFolder(docs: DocumentItem[]): FolderGroup[] {
@@ -35,27 +37,38 @@ function groupByFolder(docs: DocumentItem[]): FolderGroup[] {
     }
   }
 
-  const groups: FolderGroup[] = [];
+  // Cron folders always show, even if empty
+  const cronGroups: FolderGroup[] = CRON_FOLDERS.map((cf) => ({
+    folder: cf.folder,
+    label: `${cf.emoji} ${cf.label}`,
+    docs: map.get(cf.folder) ?? [],
+    isCron: true,
+  }));
+  // Remove cron keys from the map so they don't duplicate
+  for (const cf of CRON_FOLDERS) map.delete(cf.folder);
 
-  // Sort folders reverse chronologically (date-prefixed ones first)
+  // Regular dated folders sorted reverse chronologically
+  const regularGroups: FolderGroup[] = [];
   const sortedKeys = [...map.keys()].sort((a, b) => b.localeCompare(a));
   for (const key of sortedKeys) {
-    groups.push({
+    regularGroups.push({
       folder: key,
       label: key,
       docs: map.get(key)!,
+      isCron: false,
     });
   }
 
   if (ungrouped.length > 0) {
-    groups.push({
+    regularGroups.push({
       folder: "__ungrouped__",
       label: "Unfiled",
       docs: ungrouped,
+      isCron: false,
     });
   }
 
-  return groups;
+  return [...cronGroups, ...regularGroups];
 }
 
 export default function Sidebar({
@@ -136,36 +149,55 @@ export default function Sidebar({
       </div>
 
       <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
-        {groups.length === 0 ? (
-          <div className="px-3 py-6 text-sm text-zinc-500">
-            No documents yet. Create one to get started.
-          </div>
-        ) : (
-          groups.map((group) => {
-            const isOpen = openFolders.has(group.folder);
-            return (
-              <div key={group.folder}>
-                <button
-                  type="button"
-                  onClick={() => toggleFolder(group.folder)}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs font-medium uppercase tracking-wide text-zinc-400 transition hover:bg-zinc-800/40 hover:text-zinc-200"
-                >
-                  <ChevronRight
-                    className={clsx(
-                      "h-3.5 w-3.5 transition-transform",
-                      isOpen && "rotate-90"
-                    )}
-                  />
-                  <FolderOpen className="h-3.5 w-3.5 text-indigo-400" />
-                  <span className="truncate">{group.label}</span>
-                  <span className="ml-auto text-[10px] text-zinc-600">
-                    {group.docs.length}
-                  </span>
-                </button>
+        {/* Cron Jobs Section Header */}
+        <div className="mb-1 mt-2 flex items-center gap-2 px-2">
+          <Clock className="h-3 w-3 text-violet-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">
+            Active Cron Jobs
+          </span>
+          <div className="ml-auto h-px flex-1 bg-violet-500/20" />
+        </div>
 
-                {isOpen && (
-                  <div className="ml-3 space-y-0.5 border-l border-zinc-800 pl-2">
-                    {group.docs.map((doc) => (
+        {groups.filter((g) => g.isCron).map((group) => {
+          const isOpen = openFolders.has(group.folder);
+          const cronDef = getCronFolder(group.folder);
+          return (
+            <div key={group.folder}>
+              <button
+                type="button"
+                onClick={() => toggleFolder(group.folder)}
+                className={clsx(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs font-semibold transition",
+                  cronDef?.accent ?? "text-zinc-400",
+                  "hover:bg-zinc-800/60"
+                )}
+              >
+                <ChevronRight
+                  className={clsx(
+                    "h-3.5 w-3.5 transition-transform",
+                    isOpen && "rotate-90"
+                  )}
+                />
+                <span className="truncate">{group.label}</span>
+                <span
+                  className={clsx(
+                    "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                    cronDef?.bgAccent ?? "bg-zinc-800",
+                    cronDef?.accent ?? "text-zinc-500"
+                  )}
+                >
+                  {group.docs.length}
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-zinc-700/50 pl-2">
+                  {group.docs.length === 0 ? (
+                    <div className="px-3 py-2 text-xs italic text-zinc-600">
+                      No outputs yet — waiting for next run
+                    </div>
+                  ) : (
+                    group.docs.map((doc) => (
                       <div
                         key={doc.id}
                         className={clsx(
@@ -191,13 +223,79 @@ export default function Sidebar({
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Documents Section Header */}
+        <div className="mb-1 mt-4 flex items-center gap-2 px-2">
+          <FolderOpen className="h-3 w-3 text-indigo-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">
+            Documents
+          </span>
+          <div className="ml-auto h-px flex-1 bg-indigo-500/20" />
+        </div>
+
+        {groups.filter((g) => !g.isCron).map((group) => {
+          const isOpen = openFolders.has(group.folder);
+          return (
+            <div key={group.folder}>
+              <button
+                type="button"
+                onClick={() => toggleFolder(group.folder)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs font-medium uppercase tracking-wide text-zinc-400 transition hover:bg-zinc-800/40 hover:text-zinc-200"
+              >
+                <ChevronRight
+                  className={clsx(
+                    "h-3.5 w-3.5 transition-transform",
+                    isOpen && "rotate-90"
+                  )}
+                />
+                <FolderOpen className="h-3.5 w-3.5 text-indigo-400" />
+                <span className="truncate normal-case">{group.label}</span>
+                <span className="ml-auto text-[10px] text-zinc-600">
+                  {group.docs.length}
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-zinc-800 pl-2">
+                  {group.docs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className={clsx(
+                        "group flex items-center justify-between rounded-md px-3 py-1.5 text-sm transition",
+                        selectedId === doc.id
+                          ? "bg-zinc-800/80 text-zinc-100"
+                          : "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100"
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onSelect(doc)}
+                        className="flex-1 truncate text-left"
+                      >
+                        {doc.title || "Untitled"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(doc.id)}
+                        className="ml-2 hidden rounded p-1 text-zinc-500 transition hover:text-zinc-200 group-hover:block"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="border-t border-zinc-800 px-6 py-4 text-xs text-zinc-500">
