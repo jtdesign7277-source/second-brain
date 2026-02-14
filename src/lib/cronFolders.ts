@@ -9,11 +9,11 @@ export type CronFolder = {
 
 export const CRON_FOLDERS: CronFolder[] = [
   {
-    folder: "cron:x-engagement",
-    label: "X Engagement — @StratifyAI",
-    emoji: "🐦",
-    accent: "text-sky-400",
-    bgAccent: "bg-sky-500/20",
+    folder: "cron:daily-summary",
+    label: "Daily Summary",
+    emoji: "📝",
+    accent: "text-emerald-400",
+    bgAccent: "bg-emerald-500/20",
   },
   {
     folder: "cron:market-intel",
@@ -23,11 +23,11 @@ export const CRON_FOLDERS: CronFolder[] = [
     bgAccent: "bg-amber-500/20",
   },
   {
-    folder: "cron:daily-summary",
-    label: "Daily Summary",
-    emoji: "📝",
-    accent: "text-emerald-400",
-    bgAccent: "bg-emerald-500/20",
+    folder: "cron:x-engagement",
+    label: "X Engagement — @StratifyAI",
+    emoji: "🐦",
+    accent: "text-sky-400",
+    bgAccent: "bg-sky-500/20",
   },
 ];
 
