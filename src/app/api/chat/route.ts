@@ -40,41 +40,47 @@ export async function POST(req: Request) {
       });
     }
 
-    // Stream the SSE response back as plain text
     const reader = response.body!.getReader();
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
+    let buffer = "";
+
     const readable = new ReadableStream({
-      async start(controller) {
+      async pull(controller) {
         try {
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            // Parse SSE events
-            const lines = chunk.split("\n");
+            if (done) {
+              controller.close();
+              return;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            // Keep the last potentially incomplete line in the buffer
+            buffer = lines.pop() || "";
+
             for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6);
-                if (data === "[DONE]") continue;
-                try {
-                  const parsed = JSON.parse(data);
-                  if (
-                    parsed.type === "content_block_delta" &&
-                    parsed.delta?.text
-                  ) {
-                    controller.enqueue(encoder.encode(parsed.delta.text));
-                  }
-                } catch {
-                  // skip non-JSON lines
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data: ")) continue;
+              const data = trimmed.slice(6);
+              if (data === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (
+                  parsed.type === "content_block_delta" &&
+                  parsed.delta?.text
+                ) {
+                  controller.enqueue(encoder.encode(parsed.delta.text));
                 }
+              } catch {
+                // skip
               }
             }
           }
         } catch (err) {
           console.error("Stream error:", err);
-        } finally {
           controller.close();
         }
       },
