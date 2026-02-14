@@ -1,16 +1,16 @@
-import { stripe } from "@/lib/stripe";
-import { getEnv } from "@/lib/env";
+import { getStripe } from "@/lib/stripe";
+
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const origin = req.headers.get("origin") ?? "http://localhost:3000";
-  const priceId = getEnv("STRIPE_PRO_PRICE_ID");
+  const priceId = process.env.STRIPE_PRO_PRICE_ID!;
   const userId = body?.userId as string | undefined;
   const email = body?.email as string | undefined;
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${origin}/?checkout=success`,

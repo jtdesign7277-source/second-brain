@@ -1,12 +1,15 @@
-import { createClient } from "@supabase/supabase-js";
-import { getEnv } from "@/lib/env";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
+let _client: SupabaseClient | null = null;
 
-export const supabaseServer = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false
+export function getSupabaseServer(): SupabaseClient {
+  if (!_client) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) throw new Error("Missing Supabase server env vars");
+    _client = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
   }
-});
+  return _client;
+}

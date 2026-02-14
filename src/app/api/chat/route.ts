@@ -1,12 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const client = new Anthropic({
-  apiKey: getEnv("ANTHROPIC_API_KEY")
-});
+function getClient() {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("Missing ANTHROPIC_API_KEY");
+  return new Anthropic({ apiKey: key });
+}
 
 const systemPrompt =
   "You are Fred, a sharp, direct AI dev assistant. Be concise, actionable, and avoid fluff.";
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
     content: message.content
   }));
 
+  const client = getClient();
   const stream = await client.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1024,

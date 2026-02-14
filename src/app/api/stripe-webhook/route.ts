@@ -1,6 +1,6 @@
-import { stripe } from "@/lib/stripe";
-import { getEnv } from "@/lib/env";
-import { supabaseServer } from "@/lib/supabase/server";
+import { getStripe } from "@/lib/stripe";
+
+import { getSupabaseServer } from "@/lib/supabase/server";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -15,10 +15,10 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       payload,
       signature,
-      getEnv("STRIPE_WEBHOOK_SECRET")
+      process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (error) {
     console.error("Webhook signature verification failed", error);
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       const customerId = session.customer as string | null;
 
       if (userId && customerId) {
-        await supabaseServer
+        await getSupabaseServer()
           .from("profiles")
           .update({
             stripe_customer_id: customerId,
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       const customerId = subscription.customer as string;
       const status = subscription.status;
 
-      await supabaseServer
+      await getSupabaseServer()
         .from("profiles")
         .update({ subscription_status: status })
         .eq("stripe_customer_id", customerId);
