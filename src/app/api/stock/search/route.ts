@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   try {
     // Alpaca assets endpoint with search
     const res = await fetch(
-      `https://paper-api.alpaca.markets/v2/assets?status=active&asset_class=us_equity`,
+      `https://api.alpaca.markets/v2/assets?status=active&asset_class=us_equity`,
       {
         headers: {
           "APCA-API-KEY-ID": ALPACA_KEY,
