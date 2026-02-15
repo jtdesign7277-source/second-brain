@@ -105,20 +105,29 @@ function groupByFolder(docs: DocumentItem[]): { cronGroups: FolderGroup[]; strat
 
 const MONTHS: Record<string, string> = { Jan:"1",Feb:"2",Mar:"3",Apr:"4",May:"5",Jun:"6",Jul:"7",Aug:"8",Sep:"9",Oct:"10",Nov:"11",Dec:"12" };
 
+const DAY_RE = "(?:Sun(?:day)?|Mon(?:day)?|Tue(?:sday)?|Wed(?:nesday)?|Thu(?:rsday)?|Fri(?:day)?|Sat(?:urday)?)";
+const MON_RE = "(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)";
+
+function monthNum(m: string): string { return MONTHS[m.slice(0,3)] ?? m; }
+
 /** Normalize any date in a title to M/D/YY format */
 function shortDate(title: string): string {
   return title
     // "2026-02-15"
     .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (_,y,m,d) => `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}`)
-    // "Feb 15, 2026" or "Feb 15 2026"
-    .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s+(\d{4})\b/g,
-      (_,mon,d,y) => `${MONTHS[mon]}/${parseInt(d)}/${y.slice(2)}`)
-    // "Sun Feb 15 2026"
-    .replace(/\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})\b/g,
-      (_,mon,d,y) => `${MONTHS[mon]}/${parseInt(d)}/${y.slice(2)}`)
-    // "Sun Feb 15" (no year, truncated)
-    .replace(/\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\b/g,
-      (_,mon,d) => `${MONTHS[mon]}/${parseInt(d)}`);
+    // "Sunday, February 15, 2026" / "Feb 15, 2026" / "Feb 15 2026"
+    .replace(new RegExp(`\\b${DAY_RE},?\\s+${MON_RE}\\s+(\\d{1,2}),?\\s+(\\d{4})\\b`, "g"),
+      (_,mon,d,y) => `${monthNum(mon)}/${parseInt(d)}/${y.slice(2)}`)
+    .replace(new RegExp(`\\b${MON_RE}\\s+(\\d{1,2}),?\\s+(\\d{4})\\b`, "g"),
+      (_,mon,d,y) => `${monthNum(mon)}/${parseInt(d)}/${y.slice(2)}`)
+    // "Sunday, Feb 15" (no year)
+    .replace(new RegExp(`\\b${DAY_RE},?\\s+${MON_RE}\\s+(\\d{1,2})\\b`, "g"),
+      (_,mon,d) => `${monthNum(mon)}/${parseInt(d)}`)
+    // Strip "Daily Summary — " prefix, keep just date
+    .replace(/^📝\s*Daily Summary\s*—\s*/i, "")
+    .replace(/^📅\s*/, "")
+    // Strip leading emoji calendar
+    .replace(/^🗓️?\s*/, "");
 }
 
 export default function Sidebar({
