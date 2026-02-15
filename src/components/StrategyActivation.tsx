@@ -120,24 +120,54 @@ export default function StrategyActivation({
   const [stopLoss, setStopLoss] = useState(2);
   const [takeProfit, setTakeProfit] = useState(4);
 
-  // Load existing strategy state
+  // Load existing strategy state from API + localStorage fallback
   useEffect(() => {
-    const all = loadActiveStrategies();
-    const existing = all.find((s) => s.documentId === documentId);
-    if (existing) {
-      setStrategy(existing);
-      setSymbol(existing.symbol);
-      setPositionSize(existing.positionSize);
-      setMaxDailyTrades(existing.maxDailyTrades);
-      setStopLoss(existing.stopLossPercent);
-      setTakeProfit(existing.takeProfitPercent);
-      setConditions(
-        DEFAULT_CONDITIONS.map((c) => ({
-          ...c,
-          checked: existing.conditions.find((ec) => ec.id === c.id)?.checked ?? false,
-        }))
-      );
+    async function load() {
+      try {
+        const res = await fetch(`/api/strategies?userId=local`);
+        if (res.ok) {
+          const data = await res.json();
+          const existing = (data.strategies ?? []).find(
+            (s: ActiveStrategy) => s.documentId === documentId
+          );
+          if (existing) {
+            setStrategy(existing);
+            setSymbol(existing.symbol);
+            setPositionSize(existing.positionSize);
+            setMaxDailyTrades(existing.maxDailyTrades);
+            setStopLoss(existing.stopLossPercent);
+            setTakeProfit(existing.takeProfitPercent);
+            setConditions(
+              DEFAULT_CONDITIONS.map((c) => ({
+                ...c,
+                checked: existing.conditions.find(
+                  (ec: { id: string; checked: boolean }) => ec.id === c.id
+                )?.checked ?? false,
+              }))
+            );
+            return;
+          }
+        }
+      } catch {}
+      // Fallback to localStorage
+      const all = loadActiveStrategies();
+      const existing = all.find((s) => s.documentId === documentId);
+      if (existing) {
+        setStrategy(existing);
+        setSymbol(existing.symbol);
+        setPositionSize(existing.positionSize);
+        setMaxDailyTrades(existing.maxDailyTrades);
+        setStopLoss(existing.stopLossPercent);
+        setTakeProfit(existing.takeProfitPercent);
+        setConditions(
+          DEFAULT_CONDITIONS.map((c) => ({
+            ...c,
+            checked: existing.conditions.find((ec) => ec.id === c.id)?.checked ?? false,
+          }))
+        );
+      }
     }
+    load();
   }, [documentId]);
 
   const toggleCondition = (id: string) => {
@@ -150,7 +180,38 @@ export default function StrategyActivation({
   const checkedCount = conditions.filter((c) => c.checked).length;
   const isActive = strategy?.status === "active" || strategy?.status === "executing";
 
-  const handleActivate = useCallback(() => {
+  const handleActivate = useCallback(async () => {
+    const payload = {
+      userId: "local",
+      documentId,
+      title,
+      symbol,
+      positionSize,
+      maxDailyTrades,
+      stopLossPercent: stopLoss,
+      takeProfitPercent: takeProfit,
+      conditions: conditions.map((c) => ({
+        id: c.id,
+        label: c.label,
+        checked: c.checked,
+      })),
+      status: "active",
+    };
+
+    // Save to API (server-side — cron can read this)
+    try {
+      const res = await fetch("/api/strategies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStrategy(data.strategy);
+      }
+    } catch {}
+
+    // Also save to localStorage as fallback
     const newStrategy: ActiveStrategy = {
       documentId,
       title,
@@ -168,13 +229,12 @@ export default function StrategyActivation({
       activatedAt: new Date().toISOString(),
       trades: strategy?.trades ?? [],
     };
-
     const all = loadActiveStrategies().filter((s) => s.documentId !== documentId);
     all.push(newStrategy);
     saveActiveStrategies(all);
-    setStrategy(newStrategy);
+    if (!strategy) setStrategy(newStrategy);
 
-    // Also save to trader workspace
+    // Log activation to Second Brain
     fetch("/api/documents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -186,7 +246,15 @@ export default function StrategyActivation({
     }).catch(() => {});
   }, [documentId, title, symbol, positionSize, maxDailyTrades, stopLoss, takeProfit, conditions, checkedCount, strategy]);
 
-  const handleDeactivate = useCallback(() => {
+  const handleDeactivate = useCallback(async () => {
+    // Remove from API
+    try {
+      await fetch(`/api/strategies?userId=local&documentId=${documentId}`, {
+        method: "DELETE",
+      });
+    } catch {}
+
+    // Remove from localStorage
     const all = loadActiveStrategies().filter((s) => s.documentId !== documentId);
     saveActiveStrategies(all);
     setStrategy(null);
