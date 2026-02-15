@@ -5,6 +5,7 @@ import { ArrowLeft, Pencil, Eye, Save } from "lucide-react";
 import type { DocumentItem } from "@/types/documents";
 import { STRATEGIES_FOLDER } from "@/lib/cronFolders";
 import StrategyActivation from "./StrategyActivation";
+import PreTradeChecklist, { extractChecklist, type ChecklistItem } from "./PreTradeChecklist";
 
 export type DocumentViewerProps = {
   document: DocumentItem | null;
@@ -140,20 +141,22 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
                 <p className="text-zinc-500 text-sm">Empty document. Click Edit to add content.</p>
               )}
 
-              {/* Activation panel also at bottom */}
+              {/* Activation panel moved to right side */}
+            </div>
+          </div>
+
+          {/* Right — Key Trade Setups + Strategy Activation */}
+          <div className="w-[400px] shrink-0 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30 flex flex-col">
+            {/* 🔥 Key Trade Setups — editable, top */}
+            <KeyTradeSetups content={document.content} title={document.title} />
+
+            {/* Strategy Activation — confirmation + activate, bottom */}
+            <div className="mt-auto">
               <StrategyActivation
                 documentId={document.id}
                 title={document.title}
               />
             </div>
-          </div>
-
-          {/* Right — cloned activation panel */}
-          <div className="w-[400px] shrink-0 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30">
-            <StrategyActivation
-              documentId={document.id}
-              title={document.title}
-            />
           </div>
         </div>
       ) : (
@@ -177,6 +180,69 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Key Trade Setups — extracted from strategy doc, editable ── */
+function KeyTradeSetups({ content, title }: { content: string; title: string }) {
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (content) {
+      setItems(extractChecklist(content));
+      setSaved(false);
+    }
+  }, [content]);
+
+  const handleSave = (updated: ChecklistItem[]) => {
+    localStorage.setItem("second-brain-pretrade-checklist", JSON.stringify(updated));
+    window.dispatchEvent(new Event("storage"));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleRetest = () => {
+    // Build a prompt from the edited values and send to Fred's chat
+    const params = items
+      .filter((i) => i.value && i.value !== "—")
+      .map((i) => `${i.label}: ${i.value}`)
+      .join(", ");
+    const prompt = `Retest this strategy "${title}" with updated parameters: ${params}. Show updated backtest results.`;
+    // Store in localStorage for ChatPanel to pick up
+    localStorage.setItem("second-brain-retest-prompt", prompt);
+    window.dispatchEvent(new Event("storage"));
+  };
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="p-2">
+      <PreTradeChecklist
+        items={items}
+        onUpdate={(updated) => { setItems(updated); setSaved(false); }}
+        onSave={handleSave}
+      />
+      <div className="flex gap-2 px-1">
+        <button
+          onClick={handleRetest}
+          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition"
+          style={{
+            background: "rgba(99, 102, 241, 0.12)",
+            border: "1px solid rgba(99, 102, 241, 0.25)",
+            color: "#818cf8",
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99, 102, 241, 0.2)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99, 102, 241, 0.12)"; }}
+        >
+          🔄 Ask Fred to Retest
+        </button>
+        {saved && (
+          <span className="flex items-center text-[11px] text-emerald-400 font-semibold">✓ Saved</span>
+        )}
+      </div>
     </div>
   );
 }
