@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw, Send, CheckCircle } from "lucide-react";
 import clsx from "clsx";
 
-export type PanelTarget = "x" | "email" | null;
+export type PanelTarget = "x" | "email" | "market-intel" | null;
 
 type Tweet = {
   id: string;
@@ -284,6 +284,136 @@ function EmailCompose() {
   );
 }
 
+/* ── Market Intel Feed ── */
+function MarketIntelFeed() {
+  const [content, setContent] = useState<string>("");
+  const [title, setTitle] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const fetchIntel = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/documents");
+      if (!res.ok) return;
+      const data = await res.json();
+      const intelDocs = (data.documents ?? [])
+        .filter((d: { folder: string }) => d.folder === "cron:market-intel")
+        .sort(
+          (a: { created_at: string }, b: { created_at: string }) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      if (intelDocs.length > 0) {
+        setContent(intelDocs[0].content);
+        setTitle(intelDocs[0].title);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchIntel();
+    const id = setInterval(fetchIntel, 30 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [fetchIntel]);
+
+  const formattedTime = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+    timeZone: "America/New_York",
+  });
+
+  const renderLine = (line: string, i: number) => {
+    if (line.startsWith("# "))
+      return <h1 key={i} className="text-sm font-bold text-white mt-3 mb-1">{line.slice(2)}</h1>;
+    if (line.startsWith("## "))
+      return <h2 key={i} className="text-xs font-bold text-white mt-3 mb-0.5">{line.slice(3)}</h2>;
+    if (line.startsWith("### "))
+      return <h3 key={i} className="text-xs font-semibold text-zinc-300 mt-2 mb-0.5">{line.slice(4)}</h3>;
+    if (line.match(/^---+$/))
+      return <hr key={i} className="border-zinc-800 my-2" />;
+    if (line.match(/^[\s]*[-*•]/)) {
+      const text = line.replace(/^[\s]*[-*•]\s*/, "");
+      return (
+        <div key={i} className="flex gap-1.5 py-0.5 text-[11px] text-zinc-300 leading-relaxed">
+          <span className="text-emerald-400 mt-px shrink-0">•</span>
+          <span
+            dangerouslySetInnerHTML={{
+              __html: text
+                .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
+                .replace(/\$([A-Z]{1,5})/g, '<span class="text-amber-400 font-mono">$$1</span>'),
+            }}
+          />
+        </div>
+      );
+    }
+    if (line.startsWith("|")) return null;
+    if (!line.trim()) return <div key={i} className="h-1.5" />;
+    return (
+      <p
+        key={i}
+        className="text-[11px] text-zinc-300 py-0.5 leading-relaxed"
+        dangerouslySetInnerHTML={{
+          __html: line
+            .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
+            .replace(/\$([A-Z]{1,5})/g, '<span class="text-amber-400 font-mono">$$1</span>'),
+        }}
+      />
+    );
+  };
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Live clock bar */}
+      <div className="flex items-center gap-2 border-b border-zinc-800/50 px-3 py-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="text-[10px] font-mono text-emerald-400">{formattedTime} ET</span>
+        <button
+          type="button"
+          onClick={fetchIntel}
+          disabled={loading}
+          className="ml-auto flex items-center gap-1 text-[10px] text-zinc-600 transition hover:text-zinc-300"
+        >
+          <RefreshCw className={clsx("h-2.5 w-2.5", loading && "animate-spin")} />
+          Refresh
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-3 py-2">
+        {loading && !content ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="h-4 w-4 animate-spin text-zinc-600" />
+          </div>
+        ) : content ? (
+          <div>{content.split("\n").map(renderLine)}</div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-zinc-600">
+            <p className="text-xs">No intel yet — waiting for next scan</p>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-zinc-800/50 px-3 py-1.5">
+        <span className="text-[9px] text-zinc-600">
+          Sources: Yahoo · Reuters · CoinDesk · Reddit · HN · ESPN
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ── Split Panel ── */
 export default function SplitPanel({
   target,
@@ -294,6 +424,7 @@ export default function SplitPanel({
 }) {
   const isX = target === "x";
   const isEmail = target === "email";
+  const isIntel = target === "market-intel";
 
   return (
     <div className="flex h-full w-[280px] shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
@@ -314,6 +445,13 @@ export default function SplitPanel({
               </svg>
               @stratify_hq
             </>
+          ) : isIntel ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              Market Intel
+            </>
           ) : (
             <>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5">
@@ -333,7 +471,7 @@ export default function SplitPanel({
       </div>
 
       <div className="flex-1 min-h-0">
-        {isX ? <XFeed /> : <EmailCompose />}
+        {isX ? <XFeed /> : isIntel ? <MarketIntelFeed /> : <EmailCompose />}
       </div>
     </div>
   );

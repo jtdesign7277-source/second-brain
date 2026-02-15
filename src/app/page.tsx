@@ -7,7 +7,6 @@ import EmailBar from "@/components/EmailBar";
 import Sidebar from "@/components/Sidebar";
 import SplitPanel from "@/components/SplitPanel";
 import type { PanelTarget } from "@/components/SplitPanel";
-import MarketIntelWidget from "@/components/MarketIntelWidget";
 import TradingWidgets from "@/components/TradingWidgets";
 import { useDocuments } from "@/hooks/useDocuments";
 import { seedIfNeeded } from "@/lib/seedDocuments";
@@ -76,9 +75,6 @@ export default function Home() {
       {splitPanel && (
         <SplitPanel target={splitPanel} onClose={() => setSplitPanel(null)} />
       )}
-
-      {/* Market Intel floating widget */}
-      <MarketIntelWidget />
 
       {/* Floating chat — only when a document is open */}
       {hasDocument && (
