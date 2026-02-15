@@ -99,15 +99,26 @@ function ChatMarkdown({ content, size }: { content: string; size: "full" | "comp
   );
 }
 
+/* ── Strip large code blocks from content (for left panel) ── */
+function stripCodeBlocks(content: string): string {
+  // Remove code blocks with 5+ lines — those go to the right panel
+  return content.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, _lang, code) => {
+    if (code.split("\n").length > 5) return "";
+    return match;
+  }).replace(/```(\w+)?\n([\s\S]*)$/, "").trim(); // Also strip incomplete streaming code blocks
+}
+
 /* ── Shared message list ── */
 function MessageList({
   messages,
   streaming,
   size,
+  stripCode,
 }: {
   messages: { role: string; content: string }[];
   streaming: boolean;
   size: "full" | "compact";
+  stripCode?: boolean;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -124,39 +135,45 @@ function MessageList({
           <div className="text-xs text-zinc-600 mt-1">Ask me anything about markets, strategies, or your portfolio</div>
         </div>
       )}
-      {messages.map((msg, i) => (
-        <div
-          key={i}
-          className={clsx(
-            "flex",
-            msg.role === "user" ? "justify-end" : "justify-start"
-          )}
-        >
-          {msg.role !== "user" && (
-            <div className="mr-2 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600">
-              <span className="text-white text-xs font-bold">F</span>
-            </div>
-          )}
+      {messages.map((msg, i) => {
+        const displayContent = (msg.role === "assistant" && stripCode && msg.content)
+          ? stripCodeBlocks(msg.content)
+          : msg.content;
+
+        return (
           <div
+            key={i}
             className={clsx(
-              "rounded-2xl px-4 py-2.5 leading-relaxed",
-              msg.role === "user"
-                ? "bg-indigo-600 text-white rounded-br-sm max-w-[75%] text-sm"
-                : "bg-zinc-800/80 text-zinc-100 rounded-bl-sm max-w-[85%]"
+              "flex",
+              msg.role === "user" ? "justify-end" : "justify-start"
             )}
           >
-            {msg.content ? (
-              msg.role === "user" ? msg.content : <ChatMarkdown content={msg.content} size={size} />
-            ) : (streaming && i === messages.length - 1 ? (
-              <span className="inline-flex gap-1">
-                <span className="animate-pulse">●</span>
-                <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>●</span>
-                <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>●</span>
-              </span>
-            ) : "")}
+            {msg.role !== "user" && (
+              <div className="mr-2 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600">
+                <span className="text-white text-xs font-bold">F</span>
+              </div>
+            )}
+            <div
+              className={clsx(
+                "rounded-2xl px-4 py-2.5 leading-relaxed",
+                msg.role === "user"
+                  ? "bg-indigo-600 text-white rounded-br-sm max-w-[75%] text-sm"
+                  : "bg-zinc-800/80 text-zinc-100 rounded-bl-sm max-w-[95%]"
+              )}
+            >
+              {displayContent ? (
+                msg.role === "user" ? displayContent : <ChatMarkdown content={displayContent} size={size} />
+              ) : (streaming && i === messages.length - 1 ? (
+                <span className="inline-flex gap-1">
+                  <span className="animate-pulse">●</span>
+                  <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>●</span>
+                  <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>●</span>
+                </span>
+              ) : "")}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <div ref={endRef} />
     </>
   );
@@ -394,32 +411,32 @@ function CodePanel({ code, lang }: { code: string; lang: string }) {
 /* ── Full-size chat (main content area) ── */
 export function ChatFull() {
   const { messages, input, setInput, sendMessage, streaming } = useChat();
-  const [codePanel, setCodePanel] = useState<{ code: string; lang: string } | null>(null);
 
-  // Check last assistant message for code blocks — updates live during streaming
-  const lastAssistantContent = [...messages].reverse().find(m => m.role === "assistant" && m.content)?.content || "";
-  useEffect(() => {
-    // Detect code block starting (even incomplete/streaming)
-    const partialMatch = lastAssistantContent.match(/```(\w+)?\n([\s\S]*)$/);
-    const completeMatch = extractCodePanel(lastAssistantContent);
-    
-    if (completeMatch) {
-      setCodePanel({ code: completeMatch.code, lang: completeMatch.lang });
-    } else if (partialMatch && partialMatch[2].split("\n").length > 3) {
-      // Code block started but not closed yet (still streaming)
-      setCodePanel({ code: partialMatch[2].trim(), lang: partialMatch[1] || "python" });
-    } else {
-      setCodePanel(null);
+  // Scan ALL assistant messages for code — show the latest one
+  const allContent = messages.filter(m => m.role === "assistant" && m.content).map(m => m.content);
+  const lastContent = allContent[allContent.length - 1] || "";
+  
+  // Detect code block (complete or still streaming)
+  let codePanel: { code: string; lang: string } | null = null;
+  const completeMatch = extractCodePanel(lastContent);
+  if (completeMatch) {
+    codePanel = { code: completeMatch.code, lang: completeMatch.lang };
+  } else {
+    const partialMatch = lastContent.match(/```(\w+)?\n([\s\S]{20,})$/);
+    if (partialMatch) {
+      codePanel = { code: partialMatch[2].trim(), lang: partialMatch[1] || "python" };
     }
-  }, [lastAssistantContent]);
+  }
+
+  const hasCode = !!codePanel;
 
   return (
-    <div className="flex h-full">
-      {/* Chat side */}
-      <div className={clsx("flex flex-col h-full", codePanel ? "w-1/2" : "w-full")}>
+    <div className="flex h-full gap-0">
+      {/* Chat side — always present */}
+      <div className={clsx("flex flex-col h-full min-w-0 transition-all duration-300", hasCode ? "w-1/2" : "w-full")}>
         {/* Header */}
-        <div className="flex items-center gap-3 pb-4 border-b border-zinc-800/50 mb-4">
-          <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center">
+        <div className="flex items-center gap-3 pb-4 border-b border-zinc-800/50 mb-4 px-1">
+          <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
             <span className="text-white text-sm font-bold">F</span>
           </div>
           <div>
@@ -428,9 +445,9 @@ export function ChatFull() {
           </div>
         </div>
 
-        {/* Messages */}
+        {/* Messages — strip code blocks so they only show in right panel */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-          <MessageList messages={messages} streaming={streaming} size="full" />
+          <MessageList messages={messages} streaming={streaming} size="full" stripCode={hasCode} />
         </div>
 
         {/* Input */}
@@ -445,10 +462,10 @@ export function ChatFull() {
         </div>
       </div>
 
-      {/* Code panel (right side) */}
-      {codePanel && (
-        <div className="w-1/2 h-full">
-          <CodePanel code={codePanel.code} lang={codePanel.lang} />
+      {/* Code panel (right side) — appears as soon as code block starts streaming */}
+      {hasCode && (
+        <div className="w-1/2 h-full animate-in slide-in-from-right duration-300">
+          <CodePanel code={codePanel!.code} lang={codePanel!.lang} />
         </div>
       )}
     </div>
