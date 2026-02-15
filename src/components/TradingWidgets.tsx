@@ -44,7 +44,7 @@ function MiniChart({ symbol }: { symbol: string }) {
   }, [symbol]);
 
   return (
-    <div className="h-[120px] w-full overflow-hidden rounded-lg bg-[#1e222d]">
+    <div className="h-[90px] w-full overflow-hidden rounded-lg bg-[#1e222d]">
       <div ref={ref} style={{ height: "100%", width: "100%" }} />
     </div>
   );
