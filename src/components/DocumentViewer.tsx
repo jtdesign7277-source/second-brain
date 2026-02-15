@@ -35,9 +35,10 @@ function useSpeech() {
       audioRef.current.pause();
       audioRef.current = null;
     }
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
 
     const plain = stripMarkdown(text);
-    if (!plain) return;
+    if (!plain) { console.warn("TTS: no text after stripping markdown"); return; }
 
     // Create Audio element synchronously (preserves user gesture for autoplay)
     const audio = new Audio();
@@ -48,17 +49,18 @@ function useSpeech() {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: plain }),
+        body: JSON.stringify({ text: plain.slice(0, 4000) }),
       });
 
       if (!res.ok) {
-        console.error("TTS error:", res.status);
-        setSpeaking(false);
-        audioRef.current = null;
-        return;
+        throw new Error(`TTS API returned ${res.status}`);
       }
 
       const blob = await res.blob();
+      if (blob.size < 100) {
+        throw new Error("TTS returned empty audio");
+      }
+
       const url = URL.createObjectURL(blob);
 
       audio.onended = () => {
@@ -77,9 +79,23 @@ function useSpeech() {
       audio.load();
       await audio.play();
     } catch (err) {
-      console.error("TTS failed:", err);
-      setSpeaking(false);
+      console.warn("OpenAI TTS failed, falling back to browser speech:", err);
       audioRef.current = null;
+      
+      // Fallback to browser SpeechSynthesis
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        const utter = new SpeechSynthesisUtterance(plain.slice(0, 2000));
+        utter.rate = 1.0;
+        utter.pitch = 1.0;
+        const voices = window.speechSynthesis.getVoices();
+        const englishVoice = voices.find(v => v.lang.startsWith("en"));
+        if (englishVoice) utter.voice = englishVoice;
+        utter.onend = () => setSpeaking(false);
+        utter.onerror = () => setSpeaking(false);
+        window.speechSynthesis.speak(utter);
+      } else {
+        setSpeaking(false);
+      }
     }
   }, []);
 
@@ -173,11 +189,15 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
     setEditing(false);
   };
 
-  const handleSpeak = () => {
+  const handleSpeak = async () => {
     if (speaking) {
       stop();
     } else {
-      speak(document.content);
+      try {
+        await speak(document.content);
+      } catch (err) {
+        console.error("Speak failed:", err);
+      }
     }
   };
 
