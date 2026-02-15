@@ -156,12 +156,12 @@ export default function Sidebar({
 
       <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
         {/* Strategies Section */}
-        <div className="mb-1 mt-2 flex items-center gap-2 px-2">
-          <Target className="h-3 w-3 text-fuchsia-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-fuchsia-400">
+        <div className="mb-2 mt-3 pb-1 border-b border-fuchsia-500/20 flex items-center gap-2 px-2">
+          <Target className="h-4 w-4 text-fuchsia-400" />
+          <span className="text-xs font-extrabold uppercase tracking-widest text-fuchsia-400">
             Strategies
           </span>
-          <div className="ml-auto h-px flex-1 bg-fuchsia-500/20" />
+          <div className="ml-auto h-px flex-1 bg-fuchsia-500/30" />
         </div>
 
         {(() => {
@@ -212,12 +212,12 @@ export default function Sidebar({
         })()}
 
         {/* Cron Jobs Section Header */}
-        <div className="mb-1 mt-4 flex items-center gap-2 px-2">
-          <Clock className="h-3 w-3 text-violet-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">
+        <div className="mb-2 mt-5 pb-1 border-b border-violet-500/20 flex items-center gap-2 px-2">
+          <Clock className="h-4 w-4 text-violet-400" />
+          <span className="text-xs font-extrabold uppercase tracking-widest text-violet-400">
             Active Cron Jobs
           </span>
-          <div className="ml-auto h-px flex-1 bg-violet-500/20" />
+          <div className="ml-auto h-px flex-1 bg-violet-500/30" />
         </div>
 
         {cronGroups.map((group) => {
@@ -294,12 +294,12 @@ export default function Sidebar({
         })}
 
         {/* Documents Section Header */}
-        <div className="mb-1 mt-4 flex items-center gap-2 px-2">
-          <FolderOpen className="h-3 w-3 text-indigo-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">
+        <div className="mb-2 mt-5 pb-1 border-b border-indigo-500/20 flex items-center gap-2 px-2">
+          <FolderOpen className="h-4 w-4 text-indigo-400" />
+          <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-400">
             Documents
           </span>
-          <div className="ml-auto h-px flex-1 bg-indigo-500/20" />
+          <div className="ml-auto h-px flex-1 bg-indigo-500/30" />
         </div>
 
         {regularGroups.map((group) => {
