@@ -108,7 +108,7 @@ export default function Sidebar({
         });
       }
     }
-  }, [selectedId, groups]);
+  }, [selectedId, allGroups]);
 
   const toggleFolder = (folder: string) => {
     setOpenFolders((prev) => {
