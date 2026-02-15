@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { Send, ChevronDown, ChevronRight, Copy, Check, Bookmark } from "lucide-react";
 import { STRATEGIES_FOLDER } from "@/lib/cronFolders";
 import BacktestBuilder from "./BacktestBuilder";
+import MarketIntelFeed from "./MarketIntelFeed";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChat } from "@/hooks/useChat";
@@ -673,6 +674,11 @@ export function ChatFull() {
             size="full"
           />
         </div>
+      </div>
+
+      {/* Right half — Market Intel Feed */}
+      <div className="w-1/2 h-full border-l border-zinc-800/50">
+        <MarketIntelFeed />
       </div>
     </div>
   );
