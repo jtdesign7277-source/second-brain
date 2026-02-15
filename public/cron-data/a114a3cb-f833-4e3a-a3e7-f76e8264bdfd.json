@@ -1,0 +1,7 @@
+{
+  "id": "a114a3cb-f833-4e3a-a3e7-f76e8264bdfd",
+  "title": "🎬 Daily X Video Posts — Pipeline Plan",
+  "content": "# Daily X Video Posts — Pipeline Plan\n\n## The Pipeline\n1. **Script generation** — AI writes a daily 20-sec stock tip script\n2. **HeyGen API call** — generates avatar video from script\n3. **Wait for video to render** (~2-5 min)\n4. **Download the video**\n5. **Generate X post text + hashtags**\n6. **Post to X via API**\n7. **Run this daily on a cron schedule**\n\n## What You Need\n\n### HeyGen API Key\n- Check if your plan includes API access (it's separate from the web UI)\n- Usually requires Enterprise or a paid API plan\n- Needed to programmatically generate avatar videos\n\n### X/Twitter API Access\n- Need a developer account to post programmatically\n- Apply at: developer.x.com\n- ✅ Already have keys (@Stratify_hq account)\n\n### Server to Run the Cron\n- **Railway** can do this (already have backend there)\n- Or a simple **GitHub Action** on a schedule\n- Or OpenClaw cron job orchestrating the whole flow\n\n## Tech Options\n- HeyGen API → video generation\n- OpenAI/Claude → script writing\n- X API v2 → media upload + tweet posting\n- Railway/GitHub Actions → scheduling",
+  "folder": "📹 Daily X Video Posts",
+  "created_at": "2026-02-15T12:33:00.000Z"
+}
