@@ -65,22 +65,22 @@ function TweetCard({ tweet, defaultAuthor }: { tweet: Tweet; defaultAuthor?: str
             {tweet.text}
           </p>
           {m && (
-            <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-600">
-              <span className="flex items-center gap-0.5">
-                <MessageCircle className="h-3 w-3" />
+            <div className="flex items-center gap-4 mt-2 text-[10px] text-zinc-600">
+              <span className="flex items-center gap-1 hover:text-sky-400 transition">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1.751 10c.004-.078.01-.237.01-.237A5.876 5.876 0 0 1 7.62 4.5h.71a5.884 5.884 0 0 1 5.042 2.852L14.5 9.5l1.5-1 4.25-2.5a.5.5 0 0 1 .5.866L17.5 9.5l-.875 1.375.75.75a5.876 5.876 0 0 1-3.625 10.125H13c-2.5 0-4.875-1.25-6.25-3.25L5 16l-3.25.75" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 {m.reply_count > 0 && fmtN(m.reply_count)}
               </span>
-              <span className="flex items-center gap-0.5">
-                <Repeat2 className="h-3 w-3" />
+              <span className="flex items-center gap-1 hover:text-emerald-400 transition">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z" fill="currentColor" stroke="none"/></svg>
                 {m.retweet_count > 0 && fmtN(m.retweet_count)}
               </span>
-              <span className="flex items-center gap-0.5">
-                <Heart className="h-3 w-3" />
+              <span className="flex items-center gap-1 hover:text-rose-400 transition">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91z" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 {m.like_count > 0 && fmtN(m.like_count)}
               </span>
               {m.impression_count > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <BarChart3 className="h-3 w-3" />
+                <span className="flex items-center gap-1 hover:text-sky-400 transition">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8.75 21V3m0 0l-4.5 4.5M8.75 3l4.5 4.5M15.25 21V10m0 0l-3 3m3-3l3 3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   {fmtN(m.impression_count)}
                 </span>
               )}
