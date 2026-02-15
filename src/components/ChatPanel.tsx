@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Send, ChevronDown, ChevronRight, Copy, Check, Bookmark, Volume2, Square } from "lucide-react";
+import { Send, ChevronDown, ChevronRight, Copy, Check, Bookmark } from "lucide-react";
 import { STRATEGIES_FOLDER } from "@/lib/cronFolders";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -131,13 +131,11 @@ function MessageList({
   streaming,
   size,
   stripCode,
-  tts,
 }: {
   messages: { role: string; content: string }[];
   streaming: boolean;
   size: "full" | "compact";
   stripCode?: boolean;
-  tts?: TTSHandle;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -190,22 +188,6 @@ function MessageList({
                 </span>
               ) : "")}
             </div>
-            {/* Speak button on assistant messages */}
-            {msg.role === "assistant" && displayContent && tts && !streaming && (
-              <button
-                type="button"
-                onClick={() => tts.speaking ? tts.stop() : tts.speak(msg.content)}
-                className={clsx(
-                  "ml-1 mt-1 shrink-0 rounded-full p-1.5 transition",
-                  tts.speaking
-                    ? "text-red-400 hover:bg-red-500/20"
-                    : "text-zinc-500 hover:text-violet-400 hover:bg-violet-500/10"
-                )}
-                title={tts.speaking ? "Stop" : "Listen"}
-              >
-                {tts.speaking ? <Square className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-              </button>
-            )}
           </div>
         );
       })}
@@ -482,9 +464,7 @@ function saveStrategy(prose: string, code: string, name: string) {
 }
 
 /* ── Full-size chat (main content area) ── */
-type TTSHandle = { speaking: boolean; speak: (text: string) => Promise<void> | void; stop: () => void };
-
-export function ChatFull({ tts }: { tts?: TTSHandle }) {
+export function ChatFull() {
   const { messages, input, setInput, sendMessage, streaming } = useChat();
   const [saved, setSaved] = useState(false);
 
@@ -541,7 +521,7 @@ export function ChatFull({ tts }: { tts?: TTSHandle }) {
 
         {/* Messages — strip code blocks so they only show in right panel */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-          <MessageList messages={messages} streaming={streaming} size="full" stripCode={hasCode} tts={tts} />
+          <MessageList messages={messages} streaming={streaming} size="full" stripCode={hasCode} />
         </div>
 
         {/* Save Strategy button + Input */}

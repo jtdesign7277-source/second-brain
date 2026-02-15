@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatFull, ChatFloating, ChatBubble } from "@/components/ChatPanel";
 import DocumentViewer from "@/components/DocumentViewer";
 import EmailBar from "@/components/EmailBar";
@@ -10,84 +10,6 @@ import type { PanelTarget } from "@/components/SplitPanel";
 import TradingWidgets from "@/components/TradingWidgets";
 import { useDocuments } from "@/hooks/useDocuments";
 import { seedIfNeeded } from "@/lib/seedDocuments";
-
-/* ── Dead simple TTS — no fancy refs, just fetch + play ── */
-function useGlobalTTS() {
-  const [speaking, setSpeaking] = useState(false);
-  const currentAudio = useRef<HTMLAudioElement | null>(null);
-
-  const speak = useCallback(async (text: string) => {
-    // Kill anything playing
-    if (currentAudio.current) {
-      currentAudio.current.pause();
-      currentAudio.current.src = "";
-      currentAudio.current = null;
-    }
-    window.speechSynthesis?.cancel();
-
-    // Strip markdown
-    const plain = text
-      .replace(/```[\s\S]*?```/g, "")
-      .replace(/^#{1,6}\s+/gm, "")
-      .replace(/\*\*(.+?)\*\*/g, "$1")
-      .replace(/\*(.+?)\*/g, "$1")
-      .replace(/`([^`]+)`/g, "$1")
-      .replace(/^- /gm, "")
-      .replace(/^\d+\.\s/gm, "")
-      .replace(/^---$/gm, "")
-      .replace(/\n{2,}/g, "\n")
-      .trim();
-
-    if (!plain) return;
-    setSpeaking(true);
-
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: plain.slice(0, 4000) }),
-      });
-      if (!res.ok) throw new Error(`${res.status}`);
-      const blob = await res.blob();
-
-      // Convert to data URL (avoids blob URL lifecycle issues)
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-
-      const audio = new Audio(dataUrl);
-      currentAudio.current = audio;
-      audio.onended = () => { setSpeaking(false); currentAudio.current = null; };
-      audio.onerror = () => { setSpeaking(false); currentAudio.current = null; };
-      await audio.play();
-    } catch {
-      // Fallback: browser voice
-      setSpeaking(false);
-      if (window.speechSynthesis) {
-        const utter = new SpeechSynthesisUtterance(plain.slice(0, 2000));
-        utter.onend = () => setSpeaking(false);
-        utter.onerror = () => setSpeaking(false);
-        window.speechSynthesis.speak(utter);
-        setSpeaking(true);
-      }
-    }
-  }, []);
-
-  const stop = useCallback(() => {
-    if (currentAudio.current) {
-      currentAudio.current.pause();
-      currentAudio.current.src = "";
-      currentAudio.current = null;
-    }
-    window.speechSynthesis?.cancel();
-    setSpeaking(false);
-  }, []);
-
-  return { speaking, speak, stop };
-}
 
 export default function Home() {
   const {
@@ -104,7 +26,7 @@ export default function Home() {
 
   const [floatingChatOpen, setFloatingChatOpen] = useState(false);
   const [splitPanel, setSplitPanel] = useState<PanelTarget>(null);
-  const tts = useGlobalTTS();
+  
 
   useEffect(() => {
     seedIfNeeded();
@@ -139,12 +61,12 @@ export default function Home() {
               onClose={() => {
                 deselectDocument();
                 setFloatingChatOpen(false);
-                tts.stop();
+                
               }}
-              tts={tts}
+              
             />
           ) : (
-            <ChatFull tts={tts} />
+            <ChatFull  />
           )}
         </div>
       </main>

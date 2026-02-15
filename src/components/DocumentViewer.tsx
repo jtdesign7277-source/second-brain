@@ -1,24 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Pencil, Eye, Save, Volume2, Square } from "lucide-react";
+import { ArrowLeft, Pencil, Eye, Save } from "lucide-react";
 import type { DocumentItem } from "@/types/documents";
-
-export type TTSHandle = {
-  speaking: boolean;
-  speak: (text: string) => Promise<void> | void;
-  stop: () => void;
-};
 
 export type DocumentViewerProps = {
   document: DocumentItem | null;
   onSave: (doc: DocumentItem) => Promise<void>;
   onClose: () => void;
-  tts?: TTSHandle;
 };
-
-/* ── Noop TTS fallback ── */
-const noopTTS: TTSHandle = { speaking: false, speak: async () => {}, stop: () => {} };
 
 /* ── RenderedMarkdown ── */
 function RenderedMarkdown({ content }: { content: string }) {
@@ -51,18 +41,16 @@ function RenderedMarkdown({ content }: { content: string }) {
 }
 
 /* ── DocumentViewer ── */
-export default function DocumentViewer({ document, onSave, onClose, tts }: DocumentViewerProps) {
+export default function DocumentViewer({ document, onSave, onClose }: DocumentViewerProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const { speaking, speak, stop } = tts ?? noopTTS;
 
   // Reset when switching documents
   useEffect(() => {
     setEditing(false);
     setDraft(document?.content ?? "");
-    stop(); // Stop speaking when switching docs
-  }, [document, stop]);
+  }, [document]);
 
   if (!document) {
     return (
@@ -89,18 +77,6 @@ export default function DocumentViewer({ document, onSave, onClose, tts }: Docum
     setEditing(false);
   };
 
-  const handleSpeak = async () => {
-    if (speaking) {
-      stop();
-    } else {
-      try {
-        await speak(document.content);
-      } catch (err) {
-        console.error("Speak failed:", err);
-      }
-    }
-  };
-
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -118,30 +94,6 @@ export default function DocumentViewer({ document, onSave, onClose, tts }: Docum
           <h1 className="text-base font-semibold text-zinc-100 truncate">{document.title}</h1>
         </div>
         <div className="flex items-center gap-1.5 ml-3 shrink-0">
-          {/* Speak button */}
-          <button
-            type="button"
-            onClick={handleSpeak}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-              speaking
-                ? "border-red-500/50 bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                : "border-violet-500/50 bg-violet-500/20 text-violet-300 hover:bg-violet-500/30"
-            }`}
-            title={speaking ? "Stop reading" : "Read document aloud"}
-          >
-            {speaking ? (
-              <>
-                <Square className="h-3 w-3" />
-                Stop
-              </>
-            ) : (
-              <>
-                <Volume2 className="h-3 w-3" />
-                Speak
-              </>
-            )}
-          </button>
-
           {editing && (
             <button
               type="button"
