@@ -248,29 +248,106 @@ function extractCodePanel(content: string): { prose: string; code: string; lang:
 function CodePanel({ code, lang }: { code: string; lang: string }) {
   const [copied, setCopied] = useState(false);
   const lines = code.split("\n");
+  const codeEndRef = useRef<HTMLDivElement>(null);
 
-  // Simple Python syntax highlighting
+  // Auto-scroll as code streams in
+  useEffect(() => {
+    codeEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [code]);
+
+  // Tokenized syntax highlighting — produces colored spans, not regex-on-HTML
   function highlightLine(line: string): React.ReactNode {
-    // Keywords
-    let highlighted = line
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      // Strings (single and double quoted)
-      .replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '<span class="text-amber-300">$&</span>')
+    type Token = { text: string; color: string };
+    const tokens: Token[] = [];
+    let i = 0;
+
+    const KEYWORDS = new Set(["import","from","def","class","return","if","elif","else","for","while","in","not","and","or","try","except","with","as","pass","break","continue","yield","lambda","None","True","False","self","raise","finally","assert","global","nonlocal","del","async","await"]);
+    const BUILTINS = new Set(["print","len","range","int","float","str","list","dict","set","tuple","type","isinstance","enumerate","zip","map","filter","sorted","reversed","abs","max","min","sum","round","open","input","super","hasattr","getattr","setattr","format","append","extend","keys","values","items","join","split","strip","replace","lower","upper","startswith","endswith","DataFrame","Series","read_csv","to_csv","rolling","mean","std","shift","cumsum","cumprod","dropna","fillna","groupby","merge","concat","apply","iloc","loc","plot","figure","subplot","show","xlabel","ylabel","title","legend","grid","savefig","array","zeros","ones","arange","linspace","reshape","dot","sqrt","log","exp","where"]);
+
+    while (i < line.length) {
       // Comments
-      .replace(/(#.*)$/, '<span class="text-zinc-500 italic">$1</span>')
-      // Keywords
-      .replace(/\b(import|from|def|class|return|if|elif|else|for|while|in|not|and|or|try|except|with|as|pass|break|continue|yield|lambda|None|True|False|self|raise|finally|assert|global|nonlocal|del|async|await)\b/g, '<span class="text-violet-400">$&</span>')
-      // Built-in functions
-      .replace(/\b(print|len|range|int|float|str|list|dict|set|tuple|type|isinstance|enumerate|zip|map|filter|sorted|reversed|abs|max|min|sum|round|open|input)\b/g, '<span class="text-sky-400">$&</span>')
-      // Numbers
-      .replace(/\b(\d+\.?\d*)\b/g, '<span class="text-emerald-400">$&</span>')
+      if (line[i] === "#") {
+        tokens.push({ text: line.slice(i), color: "text-zinc-500 italic" });
+        break;
+      }
+      // Strings
+      if (line[i] === '"' || line[i] === "'") {
+        const q = line[i];
+        // Triple quotes
+        const triple = line.slice(i, i + 3) === q + q + q;
+        const end = triple ? q + q + q : q;
+        const start = i;
+        i += triple ? 3 : 1;
+        while (i < line.length) {
+          if (line[i] === "\\" && i + 1 < line.length) { i += 2; continue; }
+          if (triple ? line.slice(i, i + 3) === end : line[i] === end) { i += triple ? 3 : 1; break; }
+          i++;
+        }
+        tokens.push({ text: line.slice(start, i), color: "text-amber-300" });
+        continue;
+      }
+      // f-strings
+      if ((line[i] === "f" || line[i] === "F") && i + 1 < line.length && (line[i + 1] === '"' || line[i + 1] === "'")) {
+        const q = line[i + 1];
+        const start = i;
+        i += 2;
+        while (i < line.length) {
+          if (line[i] === "\\" && i + 1 < line.length) { i += 2; continue; }
+          if (line[i] === q) { i++; break; }
+          i++;
+        }
+        tokens.push({ text: line.slice(start, i), color: "text-amber-300" });
+        continue;
+      }
       // Decorators
-      .replace(/(@\w+)/g, '<span class="text-amber-500">$&</span>')
-      // Function definitions
-      .replace(/(def\s+)(\w+)/g, '$1<span class="text-sky-300">$2</span>')
-      // Class definitions
-      .replace(/(class\s+)(\w+)/g, '$1<span class="text-emerald-300">$2</span>');
-    return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
+      if (line[i] === "@" && (i === 0 || /\s/.test(line[i - 1]))) {
+        const start = i;
+        i++;
+        while (i < line.length && /\w/.test(line[i])) i++;
+        tokens.push({ text: line.slice(start, i), color: "text-amber-500" });
+        continue;
+      }
+      // Numbers
+      if (/\d/.test(line[i]) && (i === 0 || !/\w/.test(line[i - 1]))) {
+        const start = i;
+        while (i < line.length && /[\d._eE]/.test(line[i])) i++;
+        tokens.push({ text: line.slice(start, i), color: "text-emerald-400" });
+        continue;
+      }
+      // Words (identifiers/keywords)
+      if (/[a-zA-Z_]/.test(line[i])) {
+        const start = i;
+        while (i < line.length && /\w/.test(line[i])) i++;
+        const word = line.slice(start, i);
+        if (KEYWORDS.has(word)) {
+          tokens.push({ text: word, color: "text-violet-400 font-medium" });
+        } else if (BUILTINS.has(word)) {
+          tokens.push({ text: word, color: "text-sky-400" });
+        } else if (i < line.length && line[i] === "(") {
+          tokens.push({ text: word, color: "text-sky-300" });
+        } else {
+          tokens.push({ text: word, color: "text-zinc-200" });
+        }
+        continue;
+      }
+      // Operators
+      if ("=<>!+-*/%&|^~".includes(line[i])) {
+        tokens.push({ text: line[i], color: "text-rose-400" });
+        i++;
+        continue;
+      }
+      // Brackets
+      if ("()[]{}".includes(line[i])) {
+        tokens.push({ text: line[i], color: "text-zinc-400" });
+        i++;
+        continue;
+      }
+      // Everything else (whitespace, punctuation)
+      tokens.push({ text: line[i], color: "text-zinc-200" });
+      i++;
+    }
+
+    return <>{tokens.map((t, idx) => <span key={idx} className={t.color}>{t.text}</span>)}</>;
   }
 
   return (
@@ -307,6 +384,7 @@ function CodePanel({ code, lang }: { code: string; lang: string }) {
               ))}
             </tbody>
           </table>
+          <div ref={codeEndRef} />
         </pre>
       </div>
     </div>
@@ -318,18 +396,22 @@ export function ChatFull() {
   const { messages, input, setInput, sendMessage, streaming } = useChat();
   const [codePanel, setCodePanel] = useState<{ code: string; lang: string } | null>(null);
 
-  // Check last assistant message for code blocks
+  // Check last assistant message for code blocks — updates live during streaming
+  const lastAssistantContent = [...messages].reverse().find(m => m.role === "assistant" && m.content)?.content || "";
   useEffect(() => {
-    const lastAssistant = [...messages].reverse().find(m => m.role === "assistant" && m.content);
-    if (lastAssistant) {
-      const extracted = extractCodePanel(lastAssistant.content);
-      if (extracted) {
-        setCodePanel({ code: extracted.code, lang: extracted.lang });
-      } else {
-        setCodePanel(null);
-      }
+    // Detect code block starting (even incomplete/streaming)
+    const partialMatch = lastAssistantContent.match(/```(\w+)?\n([\s\S]*)$/);
+    const completeMatch = extractCodePanel(lastAssistantContent);
+    
+    if (completeMatch) {
+      setCodePanel({ code: completeMatch.code, lang: completeMatch.lang });
+    } else if (partialMatch && partialMatch[2].split("\n").length > 3) {
+      // Code block started but not closed yet (still streaming)
+      setCodePanel({ code: partialMatch[2].trim(), lang: partialMatch[1] || "python" });
+    } else {
+      setCodePanel(null);
     }
-  }, [messages]);
+  }, [lastAssistantContent]);
 
   return (
     <div className="flex h-full">
