@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronRight, Clock, FolderOpen, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Clock, FolderOpen, Plus, Search, Trash2, Target } from "lucide-react";
 import clsx from "clsx";
 import { useMemo, useState } from "react";
 import type { DocumentItem } from "@/types/documents";
-import { CRON_FOLDERS, getCronFolder } from "@/lib/cronFolders";
+import { CRON_FOLDERS, getCronFolder, STRATEGIES_FOLDER } from "@/lib/cronFolders";
 import StockSearch from "./StockSearch";
 
 export type SidebarProps = {
@@ -48,6 +48,15 @@ function groupByFolder(docs: DocumentItem[]): FolderGroup[] {
   // Remove cron keys from the map so they don't duplicate
   for (const cf of CRON_FOLDERS) map.delete(cf.folder);
 
+  // Strategies folder
+  const strategiesGroup: FolderGroup = {
+    folder: STRATEGIES_FOLDER,
+    label: "🎯 Strategies",
+    docs: map.get(STRATEGIES_FOLDER) ?? [],
+    isCron: false,
+  };
+  map.delete(STRATEGIES_FOLDER);
+
   // Regular dated folders sorted reverse chronologically
   const regularGroups: FolderGroup[] = [];
   const sortedKeys = [...map.keys()].sort((a, b) => b.localeCompare(a));
@@ -69,7 +78,7 @@ function groupByFolder(docs: DocumentItem[]): FolderGroup[] {
     });
   }
 
-  return [...cronGroups, ...regularGroups];
+  return { cronGroups, strategiesGroup, regularGroups };
 }
 
 export default function Sidebar({
@@ -82,12 +91,13 @@ export default function Sidebar({
   onDelete,
 }: SidebarProps) {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
-  const groups = useMemo(() => groupByFolder(documents), [documents]);
+  const { cronGroups, strategiesGroup, regularGroups } = useMemo(() => groupByFolder(documents), [documents]);
+  const allGroups = useMemo(() => [strategiesGroup, ...cronGroups, ...regularGroups], [strategiesGroup, cronGroups, regularGroups]);
 
   // Auto-open folder containing selected doc
   useMemo(() => {
     if (!selectedId) return;
-    for (const g of groups) {
+    for (const g of allGroups) {
       if (g.docs.some((d) => d.id === selectedId)) {
         setOpenFolders((prev) => {
           if (prev.has(g.folder)) return prev;
@@ -144,8 +154,64 @@ export default function Sidebar({
       </div>
 
       <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
-        {/* Cron Jobs Section Header */}
+        {/* Strategies Section */}
         <div className="mb-1 mt-2 flex items-center gap-2 px-2">
+          <Target className="h-3 w-3 text-fuchsia-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-fuchsia-400">
+            Strategies
+          </span>
+          <div className="ml-auto h-px flex-1 bg-fuchsia-500/20" />
+        </div>
+
+        {(() => {
+          const isOpen = openFolders.has(strategiesGroup.folder);
+          return (
+            <div>
+              <button
+                type="button"
+                onClick={() => toggleFolder(strategiesGroup.folder)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs font-semibold text-fuchsia-400 transition hover:bg-zinc-800/60"
+              >
+                <ChevronRight className={clsx("h-3.5 w-3.5 transition-transform", isOpen && "rotate-90")} />
+                <span className="truncate">{strategiesGroup.label}</span>
+                <span className="ml-auto rounded-full bg-fuchsia-500/20 px-1.5 py-0.5 text-[10px] font-bold text-fuchsia-400">
+                  {strategiesGroup.docs.length}
+                </span>
+              </button>
+              {isOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-fuchsia-500/20 pl-2">
+                  {strategiesGroup.docs.length === 0 ? (
+                    <div className="px-3 py-2 text-xs italic text-zinc-600">
+                      Save a strategy from Fred&apos;s chat
+                    </div>
+                  ) : (
+                    strategiesGroup.docs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className={clsx(
+                          "group flex items-center justify-between rounded-md px-3 py-1.5 text-sm transition",
+                          selectedId === doc.id
+                            ? "bg-zinc-800/80 text-zinc-100"
+                            : "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100"
+                        )}
+                      >
+                        <button type="button" onClick={() => onSelect(doc)} className="flex-1 truncate text-left">
+                          {doc.title || "Untitled"}
+                        </button>
+                        <button type="button" onClick={() => onDelete(doc.id)} className="ml-2 hidden rounded p-1 text-zinc-500 transition hover:text-zinc-200 group-hover:block" title="Delete">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Cron Jobs Section Header */}
+        <div className="mb-1 mt-4 flex items-center gap-2 px-2">
           <Clock className="h-3 w-3 text-violet-400" />
           <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">
             Active Cron Jobs
@@ -153,7 +219,7 @@ export default function Sidebar({
           <div className="ml-auto h-px flex-1 bg-violet-500/20" />
         </div>
 
-        {groups.filter((g) => g.isCron).map((group) => {
+        {cronGroups.map((group) => {
           const isOpen = openFolders.has(group.folder);
           const cronDef = getCronFolder(group.folder);
           return (
@@ -235,7 +301,7 @@ export default function Sidebar({
           <div className="ml-auto h-px flex-1 bg-indigo-500/20" />
         </div>
 
-        {groups.filter((g) => !g.isCron).map((group) => {
+        {regularGroups.map((group) => {
           const isOpen = openFolders.has(group.folder);
           return (
             <div key={group.folder}>
