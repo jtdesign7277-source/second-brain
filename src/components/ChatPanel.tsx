@@ -463,6 +463,60 @@ function saveStrategy(prose: string, code: string, name: string) {
   } catch { return false; }
 }
 
+/* ── Backtest example prompts ── */
+const BACKTEST_EXAMPLES = [
+  {
+    label: "Momentum Trend · TSLA",
+    prompt: `Ticker: $TSLA\nChart: 1H candles\nTimeframe: 6M lookback\nLogic: Buy when price crosses above the 20-period EMA and RSI(14) is above 50. Sell when price crosses below the 20-period EMA or RSI drops below 40.\nBacktest amount: $25,000`,
+  },
+  {
+    label: "RSI Bounce · NVDA",
+    prompt: `Ticker: $NVDA\nChart: 15min candles\nTimeframe: 3M lookback\nLogic: Buy when RSI(14) drops below 30 (oversold). Sell when RSI(14) rises above 55.\nBacktest amount: $15,000`,
+  },
+  {
+    label: "MACD Crossover · QQQ",
+    prompt: `Ticker: $QQQ\nChart: 5min candles\nTimeframe: 1M lookback\nLogic: Buy when MACD line crosses above signal line and both are below zero (bullish reversal). Sell when MACD crosses below signal line.\nBacktest amount: $10,000`,
+  },
+];
+
+function RotatingExamples({ onSelect }: { onSelect: (prompt: string) => void }) {
+  const [idx, setIdx] = useState(0);
+  const [fade, setFade] = useState(true);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setIdx((prev) => (prev + 1) % BACKTEST_EXAMPLES.length);
+        setFade(true);
+      }, 300);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const ex = BACKTEST_EXAMPLES[idx];
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(ex.prompt)}
+      className={clsx(
+        "ml-4 flex items-center gap-2 rounded-lg border border-zinc-800/60 bg-zinc-900/40 px-3 py-1.5 transition-all duration-300 hover:border-indigo-500/40 hover:bg-indigo-500/5 group cursor-pointer",
+        fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+      )}
+    >
+      <span className="text-[10px] text-indigo-400 font-medium whitespace-nowrap">▶ Try:</span>
+      <span className="text-[11px] text-zinc-300 group-hover:text-indigo-300 transition whitespace-nowrap">{ex.label}</span>
+      {/* Progress dots */}
+      <span className="flex items-center gap-1 ml-2">
+        {BACKTEST_EXAMPLES.map((_, i) => (
+          <span key={i} className={clsx("h-1 w-1 rounded-full transition-all", i === idx ? "bg-indigo-400 w-2" : "bg-zinc-700")} />
+        ))}
+      </span>
+    </button>
+  );
+}
+
 /* ── Full-size chat (main content area) ── */
 export function ChatFull() {
   const { messages, input, setInput, sendMessage, streaming } = useChat();
@@ -517,6 +571,9 @@ export function ChatFull() {
             <div className="text-base font-semibold text-zinc-100">Fred</div>
             <div className="text-xs text-emerald-400">online</div>
           </div>
+          {messages.length === 0 && (
+            <RotatingExamples onSelect={(prompt) => setInput(prompt)} />
+          )}
         </div>
 
         {/* Messages — strip code blocks so they only show in right panel */}
