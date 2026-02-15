@@ -43,18 +43,34 @@ function ChatMarkdown({ content, size }: { content: string; size: "full" | "comp
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => <div className="text-base font-bold text-indigo-400 mt-3 mb-1.5 border-b border-zinc-700/50 pb-1">{children}</div>,
-          h2: ({ children }) => <div className="text-sm font-bold text-violet-400 mt-3 mb-1">{children}</div>,
+          h1: ({ children }) => <div className="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400 mt-3 mb-1.5 border-b border-indigo-500/30 pb-1">{children}</div>,
+          h2: ({ children }) => <div className="text-sm font-bold text-violet-400 mt-3 mb-1 flex items-center gap-1.5"><span className="w-1 h-4 bg-violet-500 rounded-full inline-block shrink-0" />{children}</div>,
           h3: ({ children }) => <div className="text-sm font-semibold text-sky-400 mt-2 mb-0.5">{children}</div>,
           h4: ({ children }) => <div className="text-xs font-semibold text-amber-400 mt-1.5 mb-0.5">{children}</div>,
-          p: ({ children }) => <p className="mb-1.5 leading-relaxed">{children}</p>,
-          strong: ({ children }) => <strong className="text-zinc-50 font-semibold">{children}</strong>,
-          em: ({ children }) => <em className="text-zinc-300 italic">{children}</em>,
+          p: ({ children }) => {
+            // Color-code lines with +/- percentages and dollar amounts
+            const text = String(children);
+            if (/\+\d/.test(text) || /profit|gain|winner|bull/i.test(text)) return <p className="mb-1.5 leading-relaxed text-emerald-300">{children}</p>;
+            if (/-\d/.test(text) || /loss|loser|bear|risk|stop/i.test(text)) return <p className="mb-1.5 leading-relaxed text-rose-300">{children}</p>;
+            return <p className="mb-1.5 leading-relaxed">{children}</p>;
+          },
+          strong: ({ children }) => {
+            const text = String(children);
+            if (/\+|gain|profit|bull|buy|entry|winner|best/i.test(text)) return <strong className="text-emerald-400 font-bold">{children}</strong>;
+            if (/-|loss|risk|stop|sell|bear|worst|avoid/i.test(text)) return <strong className="text-rose-400 font-bold">{children}</strong>;
+            if (/\$[\d,]+/.test(text)) return <strong className="text-amber-300 font-bold">{children}</strong>;
+            return <strong className="text-zinc-50 font-semibold">{children}</strong>;
+          },
+          em: ({ children }) => <em className="text-zinc-400 italic">{children}</em>,
           ul: ({ children }) => <ul className="mb-1.5 ml-3 space-y-0.5">{children}</ul>,
           ol: ({ children }) => <ol className="mb-1.5 ml-3 space-y-0.5 list-decimal">{children}</ol>,
-          li: ({ children }) => <li className="flex gap-1.5 before:content-['▸'] before:text-indigo-500 before:shrink-0">{children}</li>,
-          hr: () => <hr className="border-zinc-700/50 my-2" />,
-          blockquote: ({ children }) => <blockquote className="border-l-2 border-indigo-500/50 pl-3 my-1.5 text-zinc-400 italic">{children}</blockquote>,
+          li: ({ children }) => {
+            const text = String(children);
+            const bullet = /\+|gain|profit|green|bull/i.test(text) ? "text-emerald-500" : /-|loss|red|bear|risk/i.test(text) ? "text-rose-500" : "text-indigo-500";
+            return <li className={`flex gap-1.5 before:content-['▸'] before:${bullet} before:shrink-0`}><span>{children}</span></li>;
+          },
+          hr: () => <hr className="border-zinc-700/30 my-3 border-dashed" />,
+          blockquote: ({ children }) => <blockquote className="border-l-2 border-amber-500/50 pl-3 my-1.5 text-amber-200/80 italic bg-amber-500/5 py-1 rounded-r">{children}</blockquote>,
           a: ({ href, children }) => <a href={href} target="_blank" rel="noopener" className="text-sky-400 hover:text-sky-300 underline underline-offset-2">{children}</a>,
           table: ({ children }) => (
             <div className="overflow-x-auto my-2 rounded border border-zinc-700/50">
@@ -385,16 +401,20 @@ function CodePanel({ code, lang }: { code: string; lang: string }) {
       </div>
 
       {/* Code with line numbers */}
-      <div className="flex-1 overflow-auto">
-        <pre className="text-xs leading-[1.6] font-mono p-0">
-          <table className="w-full border-collapse">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <pre className="text-[11px] leading-[1.65] font-mono p-0">
+          <table className="w-full border-collapse table-fixed">
+            <colgroup>
+              <col className="w-10" />
+              <col />
+            </colgroup>
             <tbody>
               {lines.map((line, i) => (
                 <tr key={i} className="hover:bg-white/[0.03] group">
-                  <td className="text-right text-zinc-600 select-none px-3 py-0 w-10 text-[10px] border-r border-zinc-700/30 group-hover:text-zinc-500">
+                  <td className="text-right text-zinc-600 select-none px-2 py-0 text-[10px] border-r border-zinc-700/30 group-hover:text-zinc-500 align-top">
                     {i + 1}
                   </td>
-                  <td className="pl-3 pr-4 py-0 text-zinc-200 whitespace-pre">
+                  <td className="pl-3 pr-3 py-0 text-zinc-200 whitespace-pre-wrap break-all">
                     {highlightLine(line)}
                   </td>
                 </tr>

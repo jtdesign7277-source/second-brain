@@ -19,7 +19,21 @@ CODE GENERATION RULE:
 - The Python code should implement the strategy/analysis you described using real data.
 - Include proper imports, typed parameters, and clear comments.
 - Make it runnable — use pandas, numpy where appropriate.
-- The code block will be extracted and displayed in a side panel next to your analysis.`;
+- The code block will be extracted and displayed in a side panel next to your analysis.
+
+BACKTEST NAMING & VALUATION (CRITICAL):
+- At the VERY END of every backtest/strategy response (before the code block), include a bold summary box like:
+
+---
+## 🏷️ Strategy Name: $TSLA Break & Retest Long Setup (15min Chart)
+## 💰 Backtest Value: $4,230 profit on $10,000 starting capital (42.3% return)
+---
+
+- Give each backtest a catchy, specific trade name (include ticker, pattern, timeframe, direction)
+- Calculate the REAL DOLLAR P&L assuming $10,000 starting capital
+- Include: entry price, exit price, shares bought, gross profit, % return
+- Use emojis in your response: 🏆 for winners, 📉 for losers, 🎯 for targets, ⚡ for key signals, 💰 for P&L, 📊 for stats, 🔥 for best setups, ❌ for avoid signals
+- Use color-friendly formatting: lines with gains should mention "profit" or "+", losses should mention "loss" or "-" (the UI color-codes based on these words)`;
 
 function extractTickers(text: string): string[] {
   const tickers = new Set<string>();
