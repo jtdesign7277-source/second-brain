@@ -106,7 +106,7 @@ export default function Sidebar({
   onDelete,
 }: SidebarProps) {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["strategies", "cron", "xposts", "documents"]));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set<string>());
 
   const toggleSection = (section: string) => {
     setOpenSections((prev) => {
