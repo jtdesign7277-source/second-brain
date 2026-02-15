@@ -22,6 +22,46 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+/* ── Collapsible code block ── */
+function CollapsibleCode({ code, lang }: { code: string; lang: string }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const lines = code.split("\n").length;
+
+  return (
+    <div className="my-2 rounded-lg border border-zinc-700/40 bg-[#1a1a2e] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-3 py-2 bg-zinc-800/60 hover:bg-zinc-800/80 transition"
+      >
+        <div className="flex items-center gap-2">
+          <ChevronRight className={clsx("h-3.5 w-3.5 text-zinc-500 transition-transform", open && "rotate-90")} />
+          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{lang || "code"}</span>
+          <span className="text-[10px] text-zinc-600">• {lines} lines</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {open && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50 transition"
+            >
+              {copied ? <><Check className="h-3 w-3 text-emerald-400" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
+            </button>
+          )}
+          <span className="text-[10px] text-zinc-600">{open ? "Hide" : "Show"}</span>
+        </div>
+      </button>
+      {open && (
+        <pre className="p-3 overflow-x-auto text-xs leading-relaxed max-h-[400px] overflow-y-auto">
+          <code className="text-emerald-300 font-mono">{code}</code>
+        </pre>
+      )}
+    </div>
+  );
+}
+
 /* ── Collapsible section ── */
 function CollapsibleSection({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
@@ -88,19 +128,7 @@ function ChatMarkdown({ content, size }: { content: string; size: "full" | "comp
             const codeText = String(children).replace(/\n$/, "");
             
             if (isBlock || codeText.includes("\n")) {
-              return (
-                <div className="group relative my-2 rounded-lg bg-[#1a1a2e] border border-zinc-700/40 overflow-hidden">
-                  {lang && (
-                    <div className="flex items-center justify-between px-3 py-1 bg-zinc-800/60 border-b border-zinc-700/40">
-                      <span className="text-[10px] font-mono text-zinc-500 uppercase">{lang}</span>
-                    </div>
-                  )}
-                  <pre className="p-3 overflow-x-auto text-xs leading-relaxed">
-                    <code className="text-emerald-300 font-mono">{codeText}</code>
-                  </pre>
-                  <CopyButton text={codeText} />
-                </div>
-              );
+              return <CollapsibleCode code={codeText} lang={lang} />;
             }
             
             return (
@@ -579,9 +607,8 @@ export function ChatFull() {
   };
 
   return (
-    <div className="flex h-full gap-0">
-      {/* Chat side — always present */}
-      <div className={clsx("flex flex-col h-full min-w-0 transition-all duration-300", hasCode ? "w-1/2" : "w-full")}>
+    <div className="flex h-full">
+      <div className="flex flex-col h-full min-w-0 w-full">
         {/* Header */}
         <div className="flex items-center gap-3 pb-4 border-b border-zinc-800/50 mb-4 px-1">
           <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
@@ -613,9 +640,9 @@ export function ChatFull() {
           />
         )}
 
-        {/* Messages — strip code blocks so they only show in right panel */}
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-          <MessageList messages={messages} streaming={streaming} size="full" stripCode={hasCode} />
+          <MessageList messages={messages} streaming={streaming} size="full" />
         </div>
 
         {/* Save Strategy button + Input */}
@@ -647,13 +674,6 @@ export function ChatFull() {
           />
         </div>
       </div>
-
-      {/* Code panel (right side) — appears as soon as code block starts streaming */}
-      {hasCode && (
-        <div className="w-1/2 h-full animate-in slide-in-from-right duration-300">
-          <CodePanel code={codePanel!.code} lang={codePanel!.lang} />
-        </div>
-      )}
     </div>
   );
 }
