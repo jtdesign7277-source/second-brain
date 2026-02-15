@@ -8,6 +8,7 @@ export type CronFolder = {
 };
 
 export const STRATEGIES_FOLDER = "strategies";
+export const X_POSTS_PREFIX = "📹 Daily X Video Posts";
 
 export const CRON_FOLDERS: CronFolder[] = [
   {

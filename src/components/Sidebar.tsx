@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronRight, Clock, FolderOpen, Plus, Search, Trash2, Target } from "lucide-react";
+import { ChevronRight, Clock, FolderOpen, Plus, Search, Trash2, Target, Video } from "lucide-react";
 import clsx from "clsx";
 import { useMemo, useState } from "react";
 import type { DocumentItem } from "@/types/documents";
-import { CRON_FOLDERS, getCronFolder, STRATEGIES_FOLDER } from "@/lib/cronFolders";
+import { CRON_FOLDERS, getCronFolder, STRATEGIES_FOLDER, X_POSTS_PREFIX } from "@/lib/cronFolders";
 import StockSearch from "./StockSearch";
 
 export type SidebarProps = {
@@ -24,7 +24,7 @@ type FolderGroup = {
   isCron: boolean;
 };
 
-function groupByFolder(docs: DocumentItem[]): { cronGroups: FolderGroup[]; strategiesGroup: FolderGroup; regularGroups: FolderGroup[] } {
+function groupByFolder(docs: DocumentItem[]): { cronGroups: FolderGroup[]; strategiesGroup: FolderGroup; xPostsGroups: FolderGroup[]; regularGroups: FolderGroup[] } {
   const map = new Map<string, DocumentItem[]>();
   const ungrouped: DocumentItem[] = [];
 
@@ -57,6 +57,21 @@ function groupByFolder(docs: DocumentItem[]): { cronGroups: FolderGroup[]; strat
   };
   map.delete(STRATEGIES_FOLDER);
 
+  // X-Posts folders
+  const xPostsGroups: FolderGroup[] = [];
+  for (const key of [...map.keys()]) {
+    if (key.startsWith(X_POSTS_PREFIX)) {
+      xPostsGroups.push({
+        folder: key,
+        label: key,
+        docs: map.get(key)!,
+        isCron: false,
+      });
+      map.delete(key);
+    }
+  }
+  xPostsGroups.sort((a, b) => a.folder.localeCompare(b.folder));
+
   // Regular dated folders sorted reverse chronologically
   const regularGroups: FolderGroup[] = [];
   const sortedKeys = [...map.keys()].sort((a, b) => b.localeCompare(a));
@@ -78,7 +93,7 @@ function groupByFolder(docs: DocumentItem[]): { cronGroups: FolderGroup[]; strat
     });
   }
 
-  return { cronGroups, strategiesGroup, regularGroups };
+  return { cronGroups, strategiesGroup, xPostsGroups, regularGroups };
 }
 
 export default function Sidebar({
@@ -91,7 +106,7 @@ export default function Sidebar({
   onDelete,
 }: SidebarProps) {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["strategies", "cron", "documents"]));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["strategies", "cron", "xposts", "documents"]));
 
   const toggleSection = (section: string) => {
     setOpenSections((prev) => {
@@ -101,8 +116,8 @@ export default function Sidebar({
       return next;
     });
   };
-  const { cronGroups, strategiesGroup, regularGroups } = useMemo(() => groupByFolder(documents), [documents]);
-  const allGroups = useMemo(() => [strategiesGroup, ...cronGroups, ...regularGroups], [strategiesGroup, cronGroups, regularGroups]);
+  const { cronGroups, strategiesGroup, xPostsGroups, regularGroups } = useMemo(() => groupByFolder(documents), [documents]);
+  const allGroups = useMemo(() => [strategiesGroup, ...cronGroups, ...xPostsGroups, ...regularGroups], [strategiesGroup, cronGroups, xPostsGroups, regularGroups]);
 
   // Auto-open folder containing selected doc
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -307,6 +322,61 @@ export default function Sidebar({
                       </div>
                     ))
                   )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* X-Posts Section Header */}
+        <button
+          type="button"
+          onClick={() => toggleSection("xposts")}
+          className="mb-2 mt-5 pb-1 border-b border-sky-500/20 flex w-full items-center gap-2 px-2 cursor-pointer hover:opacity-80 transition"
+        >
+          <ChevronRight className={clsx("h-3.5 w-3.5 text-sky-400 transition-transform", openSections.has("xposts") && "rotate-90")} />
+          <Video className="h-4 w-4 text-sky-400" />
+          <span className="text-xs font-extrabold uppercase tracking-widest text-white">
+            X-Posts
+          </span>
+          <div className="ml-auto h-px flex-1 bg-sky-500/30" />
+        </button>
+
+        {openSections.has("xposts") && xPostsGroups.map((group) => {
+          const isOpen = openFolders.has(group.folder);
+          return (
+            <div key={group.folder}>
+              <button
+                type="button"
+                onClick={() => toggleFolder(group.folder)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs font-semibold text-sky-400 transition hover:bg-zinc-800/60"
+              >
+                <ChevronRight className={clsx("h-3.5 w-3.5 transition-transform", isOpen && "rotate-90")} />
+                <span className="truncate">{group.label.replace(X_POSTS_PREFIX, "").replace(/^[\s/]+/, "") || "General"}</span>
+                <span className="ml-auto rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-400">
+                  {group.docs.length}
+                </span>
+              </button>
+              {isOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-sky-500/20 pl-2">
+                  {group.docs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className={clsx(
+                        "group flex items-center justify-between rounded-md px-3 py-1.5 text-sm transition",
+                        selectedId === doc.id
+                          ? "bg-zinc-800/80 text-zinc-100"
+                          : "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100"
+                      )}
+                    >
+                      <button type="button" onClick={() => onSelect(doc)} className="flex-1 truncate text-left">
+                        {doc.title || "Untitled"}
+                      </button>
+                      <button type="button" onClick={() => onDelete(doc.id)} className="ml-2 hidden rounded p-1 text-zinc-500 transition hover:text-zinc-200 group-hover:block" title="Delete">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
