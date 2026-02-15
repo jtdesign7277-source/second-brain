@@ -224,38 +224,151 @@ function ChatInput({
   );
 }
 
+/* ── Extract code blocks from message content ── */
+function extractCodePanel(content: string): { prose: string; code: string; lang: string } | null {
+  // Find the LAST major code block (the consolidated one)
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  let lastMatch: RegExpExecArray | null = null;
+  let match: RegExpExecArray | null;
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    // Only extract blocks > 5 lines (skip inline snippets)
+    if (match[2].split("\n").length > 5) {
+      lastMatch = match;
+    }
+  }
+  if (!lastMatch) return null;
+  const lang = lastMatch[1] || "python";
+  const code = lastMatch[2].trim();
+  // Remove the code block from prose
+  const prose = content.slice(0, lastMatch.index).trim();
+  return { prose, code, lang };
+}
+
+/* ── Code side panel ── */
+function CodePanel({ code, lang }: { code: string; lang: string }) {
+  const [copied, setCopied] = useState(false);
+  const lines = code.split("\n");
+
+  // Simple Python syntax highlighting
+  function highlightLine(line: string): React.ReactNode {
+    // Keywords
+    let highlighted = line
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      // Strings (single and double quoted)
+      .replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '<span class="text-amber-300">$&</span>')
+      // Comments
+      .replace(/(#.*)$/, '<span class="text-zinc-500 italic">$1</span>')
+      // Keywords
+      .replace(/\b(import|from|def|class|return|if|elif|else|for|while|in|not|and|or|try|except|with|as|pass|break|continue|yield|lambda|None|True|False|self|raise|finally|assert|global|nonlocal|del|async|await)\b/g, '<span class="text-violet-400">$&</span>')
+      // Built-in functions
+      .replace(/\b(print|len|range|int|float|str|list|dict|set|tuple|type|isinstance|enumerate|zip|map|filter|sorted|reversed|abs|max|min|sum|round|open|input)\b/g, '<span class="text-sky-400">$&</span>')
+      // Numbers
+      .replace(/\b(\d+\.?\d*)\b/g, '<span class="text-emerald-400">$&</span>')
+      // Decorators
+      .replace(/(@\w+)/g, '<span class="text-amber-500">$&</span>')
+      // Function definitions
+      .replace(/(def\s+)(\w+)/g, '$1<span class="text-sky-300">$2</span>')
+      // Class definitions
+      .replace(/(class\s+)(\w+)/g, '$1<span class="text-emerald-300">$2</span>');
+    return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-[#1a1a2e] border-l border-zinc-700/40">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 bg-zinc-800/60 border-b border-zinc-700/40 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{lang}</span>
+          <span className="text-[10px] text-zinc-600">•</span>
+          <span className="text-[10px] text-zinc-500">{lines.length} lines</span>
+        </div>
+        <button
+          onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50 transition"
+        >
+          {copied ? <><Check className="h-3 w-3 text-emerald-400" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
+        </button>
+      </div>
+
+      {/* Code with line numbers */}
+      <div className="flex-1 overflow-auto">
+        <pre className="text-xs leading-[1.6] font-mono p-0">
+          <table className="w-full border-collapse">
+            <tbody>
+              {lines.map((line, i) => (
+                <tr key={i} className="hover:bg-white/[0.03] group">
+                  <td className="text-right text-zinc-600 select-none px-3 py-0 w-10 text-[10px] border-r border-zinc-700/30 group-hover:text-zinc-500">
+                    {i + 1}
+                  </td>
+                  <td className="pl-3 pr-4 py-0 text-zinc-200 whitespace-pre">
+                    {highlightLine(line)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 /* ── Full-size chat (main content area) ── */
 export function ChatFull() {
   const { messages, input, setInput, sendMessage, streaming } = useChat();
+  const [codePanel, setCodePanel] = useState<{ code: string; lang: string } | null>(null);
+
+  // Check last assistant message for code blocks
+  useEffect(() => {
+    const lastAssistant = [...messages].reverse().find(m => m.role === "assistant" && m.content);
+    if (lastAssistant) {
+      const extracted = extractCodePanel(lastAssistant.content);
+      if (extracted) {
+        setCodePanel({ code: extracted.code, lang: extracted.lang });
+      } else {
+        setCodePanel(null);
+      }
+    }
+  }, [messages]);
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 pb-4 border-b border-zinc-800/50 mb-4">
-        <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center">
-          <span className="text-white text-sm font-bold">F</span>
+    <div className="flex h-full">
+      {/* Chat side */}
+      <div className={clsx("flex flex-col h-full", codePanel ? "w-1/2" : "w-full")}>
+        {/* Header */}
+        <div className="flex items-center gap-3 pb-4 border-b border-zinc-800/50 mb-4">
+          <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center">
+            <span className="text-white text-sm font-bold">F</span>
+          </div>
+          <div>
+            <div className="text-base font-semibold text-zinc-100">Fred</div>
+            <div className="text-xs text-emerald-400">online</div>
+          </div>
         </div>
-        <div>
-          <div className="text-base font-semibold text-zinc-100">Fred</div>
-          <div className="text-xs text-emerald-400">online</div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+          <MessageList messages={messages} streaming={streaming} size="full" />
+        </div>
+
+        {/* Input */}
+        <div className="pt-4 border-t border-zinc-800/50 mt-4">
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            sendMessage={() => void sendMessage()}
+            streaming={streaming}
+            size="full"
+          />
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-        <MessageList messages={messages} streaming={streaming} size="full" />
-      </div>
-
-      {/* Input */}
-      <div className="pt-4 border-t border-zinc-800/50 mt-4">
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          sendMessage={() => void sendMessage()}
-          streaming={streaming}
-          size="full"
-        />
-      </div>
+      {/* Code panel (right side) */}
+      {codePanel && (
+        <div className="w-1/2 h-full">
+          <CodePanel code={codePanel.code} lang={codePanel.lang} />
+        </div>
+      )}
     </div>
   );
 }

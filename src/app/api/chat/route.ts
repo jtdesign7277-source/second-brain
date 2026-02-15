@@ -12,7 +12,14 @@ CRITICAL RULES:
 - Calculate actual returns: "If you bought at $X on [date] and sold at $Y on [date], that's Z% return."
 - Be concise but thorough. No generic advice — use the ACTUAL data.
 - You're talking to a trader who pays $1K/yr for premium Alpaca data. Deliver premium analysis.
-- Format with **bold**, bullet points, and clear sections.`;
+- Format with **bold**, bullet points, and clear sections.
+
+CODE GENERATION RULE:
+- When analyzing stocks, backtests, or strategies, ALWAYS include a consolidated Python script at the END of your response inside a single \`\`\`python code block.
+- The Python code should implement the strategy/analysis you described using real data.
+- Include proper imports, typed parameters, and clear comments.
+- Make it runnable — use pandas, numpy where appropriate.
+- The code block will be extracted and displayed in a side panel next to your analysis.`;
 
 function extractTickers(text: string): string[] {
   const tickers = new Set<string>();
