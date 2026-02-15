@@ -91,6 +91,16 @@ export default function Sidebar({
   onDelete,
 }: SidebarProps) {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["strategies", "cron", "documents"]));
+
+  const toggleSection = (section: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  };
   const { cronGroups, strategiesGroup, regularGroups } = useMemo(() => groupByFolder(documents), [documents]);
   const allGroups = useMemo(() => [strategiesGroup, ...cronGroups, ...regularGroups], [strategiesGroup, cronGroups, regularGroups]);
 
@@ -156,15 +166,20 @@ export default function Sidebar({
 
       <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
         {/* Strategies Section */}
-        <div className="mb-2 mt-3 pb-1 border-b border-fuchsia-500/20 flex items-center gap-2 px-2">
+        <button
+          type="button"
+          onClick={() => toggleSection("strategies")}
+          className="mb-2 mt-3 pb-1 border-b border-fuchsia-500/20 flex w-full items-center gap-2 px-2 cursor-pointer hover:opacity-80 transition"
+        >
+          <ChevronRight className={clsx("h-3.5 w-3.5 text-fuchsia-400 transition-transform", openSections.has("strategies") && "rotate-90")} />
           <Target className="h-4 w-4 text-fuchsia-400" />
-          <span className="text-xs font-extrabold uppercase tracking-widest text-blue-600">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-white">
             Strategies
           </span>
           <div className="ml-auto h-px flex-1 bg-fuchsia-500/30" />
-        </div>
+        </button>
 
-        {(() => {
+        {openSections.has("strategies") && (() => {
           const isOpen = openFolders.has(strategiesGroup.folder);
           return (
             <div>
@@ -212,15 +227,20 @@ export default function Sidebar({
         })()}
 
         {/* Cron Jobs Section Header */}
-        <div className="mb-2 mt-5 pb-1 border-b border-violet-500/20 flex items-center gap-2 px-2">
+        <button
+          type="button"
+          onClick={() => toggleSection("cron")}
+          className="mb-2 mt-5 pb-1 border-b border-violet-500/20 flex w-full items-center gap-2 px-2 cursor-pointer hover:opacity-80 transition"
+        >
+          <ChevronRight className={clsx("h-3.5 w-3.5 text-violet-400 transition-transform", openSections.has("cron") && "rotate-90")} />
           <Clock className="h-4 w-4 text-violet-400" />
-          <span className="text-xs font-extrabold uppercase tracking-widest text-blue-600">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-white">
             Active Cron Jobs
           </span>
           <div className="ml-auto h-px flex-1 bg-violet-500/30" />
-        </div>
+        </button>
 
-        {cronGroups.map((group) => {
+        {openSections.has("cron") && cronGroups.map((group) => {
           const isOpen = openFolders.has(group.folder);
           const cronDef = getCronFolder(group.folder);
           return (
@@ -294,15 +314,20 @@ export default function Sidebar({
         })}
 
         {/* Documents Section Header */}
-        <div className="mb-2 mt-5 pb-1 border-b border-indigo-500/20 flex items-center gap-2 px-2">
+        <button
+          type="button"
+          onClick={() => toggleSection("documents")}
+          className="mb-2 mt-5 pb-1 border-b border-indigo-500/20 flex w-full items-center gap-2 px-2 cursor-pointer hover:opacity-80 transition"
+        >
+          <ChevronRight className={clsx("h-3.5 w-3.5 text-indigo-400 transition-transform", openSections.has("documents") && "rotate-90")} />
           <FolderOpen className="h-4 w-4 text-indigo-400" />
-          <span className="text-xs font-extrabold uppercase tracking-widest text-blue-600">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-white">
             Documents
           </span>
           <div className="ml-auto h-px flex-1 bg-indigo-500/30" />
-        </div>
+        </button>
 
-        {regularGroups.map((group) => {
+        {openSections.has("documents") && regularGroups.map((group) => {
           const isOpen = openFolders.has(group.folder);
           return (
             <div key={group.folder}>
