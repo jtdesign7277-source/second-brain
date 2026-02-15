@@ -186,9 +186,9 @@ export default function Sidebar({
           onClick={() => toggleSection("strategies")}
           className="mb-2 mt-3 pb-1 border-b border-fuchsia-500/20 flex w-full items-center gap-2 px-2 cursor-pointer hover:opacity-80 transition"
         >
-          <ChevronRight className={clsx("h-3.5 w-3.5 text-fuchsia-400 transition-transform", openSections.has("strategies") && "rotate-90")} />
-          <Target className="h-4 w-4 text-fuchsia-400" />
-          <span className="text-xs font-extrabold uppercase tracking-widest text-white">
+          <ChevronRight className={clsx("h-5 w-5 text-fuchsia-400 transition-transform", openSections.has("strategies") && "rotate-90")} />
+          <Target className="h-5 w-5 text-fuchsia-400" />
+          <span className="text-sm font-extrabold uppercase tracking-widest text-white">
             Strategies
           </span>
           <div className="ml-auto h-px flex-1 bg-fuchsia-500/30" />
@@ -247,9 +247,9 @@ export default function Sidebar({
           onClick={() => toggleSection("cron")}
           className="mb-2 mt-5 pb-1 border-b border-violet-500/20 flex w-full items-center gap-2 px-2 cursor-pointer hover:opacity-80 transition"
         >
-          <ChevronRight className={clsx("h-3.5 w-3.5 text-violet-400 transition-transform", openSections.has("cron") && "rotate-90")} />
-          <Clock className="h-4 w-4 text-violet-400" />
-          <span className="text-xs font-extrabold uppercase tracking-widest text-white">
+          <ChevronRight className={clsx("h-5 w-5 text-violet-400 transition-transform", openSections.has("cron") && "rotate-90")} />
+          <Clock className="h-5 w-5 text-violet-400" />
+          <span className="text-sm font-extrabold uppercase tracking-widest text-white">
             Active Cron Jobs
           </span>
           <div className="ml-auto h-px flex-1 bg-violet-500/30" />
@@ -334,9 +334,9 @@ export default function Sidebar({
           onClick={() => toggleSection("xposts")}
           className="mb-2 mt-5 pb-1 border-b border-sky-500/20 flex w-full items-center gap-2 px-2 cursor-pointer hover:opacity-80 transition"
         >
-          <ChevronRight className={clsx("h-3.5 w-3.5 text-sky-400 transition-transform", openSections.has("xposts") && "rotate-90")} />
-          <Video className="h-4 w-4 text-sky-400" />
-          <span className="text-xs font-extrabold uppercase tracking-widest text-white">
+          <ChevronRight className={clsx("h-5 w-5 text-sky-400 transition-transform", openSections.has("xposts") && "rotate-90")} />
+          <Video className="h-5 w-5 text-sky-400" />
+          <span className="text-sm font-extrabold uppercase tracking-widest text-white">
             X-Posts
           </span>
           <div className="ml-auto h-px flex-1 bg-sky-500/30" />
@@ -389,9 +389,9 @@ export default function Sidebar({
           onClick={() => toggleSection("documents")}
           className="mb-2 mt-5 pb-1 border-b border-indigo-500/20 flex w-full items-center gap-2 px-2 cursor-pointer hover:opacity-80 transition"
         >
-          <ChevronRight className={clsx("h-3.5 w-3.5 text-indigo-400 transition-transform", openSections.has("documents") && "rotate-90")} />
-          <FolderOpen className="h-4 w-4 text-indigo-400" />
-          <span className="text-xs font-extrabold uppercase tracking-widest text-white">
+          <ChevronRight className={clsx("h-5 w-5 text-indigo-400 transition-transform", openSections.has("documents") && "rotate-90")} />
+          <FolderOpen className="h-5 w-5 text-indigo-400" />
+          <span className="text-sm font-extrabold uppercase tracking-widest text-white">
             Documents
           </span>
           <div className="ml-auto h-px flex-1 bg-indigo-500/30" />
