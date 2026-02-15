@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DocumentItem } from "@/types/documents";
+import { seedIfNeeded, seedStrategiesIfNeeded } from "@/lib/seedDocuments";
 
 const STORAGE_KEY = "second-brain-documents";
 
@@ -43,6 +44,9 @@ export function useDocuments(): DocumentsState {
 
   // Load local docs + fetch cron docs from API
   const loadAll = useCallback(async () => {
+    // Ensure seeds exist before reading
+    seedIfNeeded();
+    seedStrategiesIfNeeded();
     const localDocs = loadDocs();
 
     // Try to fetch cron-submitted docs from API

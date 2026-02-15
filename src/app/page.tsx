@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChatFull, ChatFloating, ChatBubble } from "@/components/ChatPanel";
 import DocumentViewer from "@/components/DocumentViewer";
 import EmailBar from "@/components/EmailBar";
@@ -9,8 +9,6 @@ import SplitPanel from "@/components/SplitPanel";
 import type { PanelTarget } from "@/components/SplitPanel";
 import TradingWidgets from "@/components/TradingWidgets";
 import { useDocuments } from "@/hooks/useDocuments";
-import { seedIfNeeded, seedStrategiesIfNeeded } from "@/lib/seedDocuments";
-
 export default function Home() {
   const {
     documents,
@@ -27,11 +25,6 @@ export default function Home() {
   const [floatingChatOpen, setFloatingChatOpen] = useState(false);
   const [splitPanel, setSplitPanel] = useState<PanelTarget>(null);
   
-
-  useEffect(() => {
-    seedIfNeeded();
-    seedStrategiesIfNeeded();
-  }, []);
 
   const hasDocument = selected !== null;
 
