@@ -165,24 +165,26 @@ export async function POST(req: Request) {
     const externalKey = req.headers.get("x-api-key");
     if (externalKey) {
       try {
-        const { validateApiKey, logUsage } = await import("@/lib/apiAuth");
-        const nextReq = req as any;
-        // Quick hash check
-        const nodeCrypto = await import("node:crypto");
-        const hash = nodeCrypto.createHash("sha256").update(externalKey).digest("hex");
-        const { getSupabaseServer } = await import("@/lib/supabase/server");
-        const sb = getSupabaseServer();
-        const { data } = await sb.from("api_keys").select("id, user_id, rate_limit_per_day, active").eq("key_hash", hash).single();
-        if (!data || !data.active) {
-          return new Response(JSON.stringify({ error: "Invalid or deactivated API key" }), { status: 401, headers: { "Content-Type": "application/json" } });
+        // SHA-256 hash using Web Crypto API (works in edge + serverless)
+        const encoder = new TextEncoder();
+        const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(externalKey));
+        const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+        const { createClient } = await import("@supabase/supabase-js");
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (url && key) {
+          const sb = createClient(url, key, { auth: { persistSession: false } });
+          const { data } = await sb.from("api_keys").select("id, user_id, rate_limit_per_day, active").eq("key_hash", hash).single();
+          if (!data || !data.active) {
+            return new Response(JSON.stringify({ error: "Invalid or deactivated API key" }), { status: 401, headers: { "Content-Type": "application/json" } });
+          }
+          const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+          const { count } = await sb.from("api_usage").select("*", { count: "exact", head: true }).eq("api_key_id", data.id).gte("created_at", todayStart.toISOString());
+          if ((count ?? 0) >= data.rate_limit_per_day) {
+            return new Response(JSON.stringify({ error: `Rate limit exceeded (${data.rate_limit_per_day}/day)` }), { status: 429, headers: { "Content-Type": "application/json" } });
+          }
+          apiKeyId = data.id;
         }
-        // Rate limit check
-        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-        const { count } = await sb.from("api_usage").select("*", { count: "exact", head: true }).eq("api_key_id", data.id).gte("created_at", todayStart.toISOString());
-        if ((count ?? 0) >= data.rate_limit_per_day) {
-          return new Response(JSON.stringify({ error: `Rate limit exceeded (${data.rate_limit_per_day}/day)` }), { status: 429, headers: { "Content-Type": "application/json" } });
-        }
-        apiKeyId = data.id;
       } catch { /* Supabase not configured — skip auth */ }
     }
 
@@ -269,8 +271,13 @@ export async function POST(req: Request) {
     // Log usage if API key was used
     if (apiKeyId) {
       try {
-        const { logUsage } = await import("@/lib/apiAuth");
-        logUsage(apiKeyId, "/api/chat", 0, 0, 0, 200).catch(() => {});
+        const { createClient } = await import("@supabase/supabase-js");
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (url && key) {
+          const sb = createClient(url, key, { auth: { persistSession: false } });
+          sb.from("api_usage").insert({ api_key_id: apiKeyId, endpoint: "/api/chat" }).then(() => {});
+        }
       } catch {}
     }
 

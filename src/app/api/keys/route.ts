@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { generateApiKey, validateApiKey, logUsage } from "@/lib/apiAuth";
 import { getSupabaseServer } from "@/lib/supabase/server";
