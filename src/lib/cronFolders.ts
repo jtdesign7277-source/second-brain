@@ -32,6 +32,13 @@ export const CRON_FOLDERS: CronFolder[] = [
     accent: "text-sky-400",
     bgAccent: "bg-sky-500/20",
   },
+  {
+    folder: "cron:trade-log",
+    label: "Trade Log — TradeBot",
+    emoji: "📊",
+    accent: "text-emerald-400",
+    bgAccent: "bg-emerald-500/20",
+  },
 ];
 
 export function getCronFolder(folderKey: string): CronFolder | undefined {

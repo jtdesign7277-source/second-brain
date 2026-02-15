@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Pencil, Eye, Save } from "lucide-react";
 import type { DocumentItem } from "@/types/documents";
+import { STRATEGIES_FOLDER } from "@/lib/cronFolders";
+import StrategyActivation from "./StrategyActivation";
 
 export type DocumentViewerProps = {
   document: DocumentItem | null;
@@ -140,6 +142,14 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
               <RenderedMarkdown content={document.content} />
             ) : (
               <p className="text-zinc-500 text-sm">Empty document. Click Edit to add content.</p>
+            )}
+
+            {/* Strategy Activation Panel — only shows for strategy documents */}
+            {document.folder === STRATEGIES_FOLDER && (
+              <StrategyActivation
+                documentId={document.id}
+                title={document.title}
+              />
             )}
           </div>
         )}
