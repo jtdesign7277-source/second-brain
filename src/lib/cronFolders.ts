@@ -7,7 +7,16 @@ export type CronFolder = {
   bgAccent: string; // tailwind bg for the badge
 };
 
+export const STRATEGIES_FOLDER = "strategies";
+
 export const CRON_FOLDERS: CronFolder[] = [
+  {
+    folder: STRATEGIES_FOLDER,
+    label: "Strategies",
+    emoji: "🎯",
+    accent: "text-fuchsia-400",
+    bgAccent: "bg-fuchsia-500/20",
+  },
   {
     folder: "cron:daily-summary",
     label: "Daily Summary",
@@ -36,5 +45,5 @@ export function getCronFolder(folderKey: string): CronFolder | undefined {
 }
 
 export function isCronFolder(folderKey: string): boolean {
-  return folderKey.startsWith("cron:");
+  return folderKey.startsWith("cron:") || folderKey === STRATEGIES_FOLDER;
 }

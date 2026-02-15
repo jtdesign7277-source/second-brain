@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Send, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import { Send, ChevronDown, ChevronRight, Copy, Check, Bookmark } from "lucide-react";
+import { STRATEGIES_FOLDER } from "@/lib/cronFolders";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChat } from "@/hooks/useChat";
@@ -428,9 +429,44 @@ function CodePanel({ code, lang }: { code: string; lang: string }) {
   );
 }
 
+/* ── Extract strategy name from Fred's response ── */
+function extractStrategyName(content: string): string {
+  // Look for 🏷️ Strategy Name: ...
+  const nameMatch = content.match(/🏷️\s*(?:Strategy\s*Name:\s*)?(.+)/i);
+  if (nameMatch) return nameMatch[1].replace(/\*+/g, "").trim();
+  // Fallback: first h1 or h2
+  const headerMatch = content.match(/^#{1,2}\s+(.+)/m);
+  if (headerMatch) return headerMatch[1].replace(/\*+/g, "").replace(/🏆|📊|🎯|💰|🔥/g, "").trim();
+  return "Untitled Strategy";
+}
+
+/* ── Save strategy to localStorage ── */
+function saveStrategy(prose: string, code: string, name: string) {
+  const STORAGE_KEY = "second-brain-documents";
+  const now = new Date().toISOString();
+  const dateStr = new Date().toLocaleDateString("en-CA");
+  const doc = {
+    id: crypto.randomUUID(),
+    user_id: "local",
+    title: `${name} — ${dateStr}`,
+    content: `${prose}\n\n---\n\n\`\`\`python\n${code}\n\`\`\``,
+    folder: STRATEGIES_FOLDER,
+    created_at: now,
+    updated_at: now,
+  };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const docs = raw ? JSON.parse(raw) : [];
+    docs.unshift(doc);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+    return true;
+  } catch { return false; }
+}
+
 /* ── Full-size chat (main content area) ── */
 export function ChatFull() {
   const { messages, input, setInput, sendMessage, streaming } = useChat();
+  const [saved, setSaved] = useState(false);
 
   // Scan ALL assistant messages for code — show the latest one
   const allContent = messages.filter(m => m.role === "assistant" && m.content).map(m => m.content);
@@ -449,6 +485,24 @@ export function ChatFull() {
   }
 
   const hasCode = !!codePanel;
+  
+  // Reset saved state when new response comes in
+  useEffect(() => { setSaved(false); }, [lastContent]);
+
+  // Check if response is done streaming (has complete code block)
+  const isComplete = hasCode && !!completeMatch && !streaming;
+
+  const handleSaveStrategy = () => {
+    if (!codePanel || !lastContent) return;
+    const prose = stripCodeBlocks(lastContent);
+    const name = extractStrategyName(lastContent);
+    const ok = saveStrategy(prose, codePanel.code, name);
+    if (ok) {
+      setSaved(true);
+      // Trigger a storage event so Sidebar picks up the new doc
+      window.dispatchEvent(new Event("storage"));
+    }
+  };
 
   return (
     <div className="flex h-full gap-0">
@@ -470,8 +524,26 @@ export function ChatFull() {
           <MessageList messages={messages} streaming={streaming} size="full" stripCode={hasCode} />
         </div>
 
-        {/* Input */}
+        {/* Save Strategy button + Input */}
         <div className="pt-4 border-t border-zinc-800/50 mt-4">
+          {isComplete && (
+            <button
+              onClick={handleSaveStrategy}
+              disabled={saved}
+              className={clsx(
+                "flex w-full items-center justify-center gap-2 rounded-xl mb-3 py-2.5 text-xs font-medium transition",
+                saved
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                  : "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/30 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/50"
+              )}
+            >
+              {saved ? (
+                <><Check className="h-4 w-4" /> Strategy Saved to 🎯 Strategies</>
+              ) : (
+                <><Bookmark className="h-4 w-4" /> Save Strategy</>
+              )}
+            </button>
+          )}
           <ChatInput
             input={input}
             setInput={setInput}

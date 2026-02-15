@@ -88,6 +88,13 @@ export function useDocuments(): DocumentsState {
     return () => clearInterval(interval);
   }, [loadAll]);
 
+  // Listen for storage events (e.g. strategy saved from chat)
+  useEffect(() => {
+    const handler = () => { loadAll().then(setDocuments); };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, [loadAll]);
+
   const filtered = useMemo(() => {
     if (!search.trim()) return documents;
     const term = search.toLowerCase();
