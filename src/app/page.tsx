@@ -144,7 +144,7 @@ export default function Home() {
               tts={tts}
             />
           ) : (
-            <ChatFull />
+            <ChatFull tts={tts} />
           )}
         </div>
       </main>
