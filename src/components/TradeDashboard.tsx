@@ -11,6 +11,8 @@ import {
   Clock,
   Zap,
   Pause,
+  Play,
+  XCircle,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -67,14 +69,45 @@ export default function TradeDashboard() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+
+    // Primary: read from localStorage (same source as StrategyActivation)
+    try {
+      const raw = localStorage.getItem("second-brain-active-strategies");
+      const local: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
+      const mapped: ActiveStrategy[] = local.map((s: Record<string, unknown>) => ({
+        id: (s.documentId as string) ?? crypto.randomUUID(),
+        userId: "local",
+        documentId: s.documentId as string,
+        title: s.title as string,
+        symbol: s.symbol as string,
+        positionSize: (s.positionSize as number) ?? 10000,
+        stopLossPercent: (s.stopLossPercent as number) ?? 2,
+        takeProfitPercent: (s.takeProfitPercent as number) ?? 4,
+        status: s.status as string,
+        activatedAt: (s.activatedAt as string) ?? null,
+        trades: (s.trades as TradeEntry[]) ?? [],
+        todayTradeCount: 0,
+      }));
+      setStrategies(mapped);
+    } catch {}
+
+    // Also try API for balance info (may fail on cold starts)
     try {
       const res = await fetch("/api/strategies?userId=local");
       if (res.ok) {
         const data = await res.json();
-        setStrategies(data.strategies ?? []);
-        setBalance(data.balance ?? null);
+        if (data.balance) setBalance(data.balance);
+        // If API has strategies too, merge (API is source of truth for trades)
+        if (data.strategies?.length) {
+          setStrategies((prev) => {
+            const apiIds = new Set((data.strategies as ActiveStrategy[]).map((s: ActiveStrategy) => s.documentId));
+            const localOnly = prev.filter((s) => !apiIds.has(s.documentId));
+            return [...(data.strategies as ActiveStrategy[]), ...localOnly];
+          });
+        }
       }
     } catch {}
+
     setLoading(false);
   }, []);
 
@@ -89,6 +122,44 @@ export default function TradeDashboard() {
     const handler = () => { fetchData(); };
     window.addEventListener("strategy-activated", handler);
     return () => window.removeEventListener("strategy-activated", handler);
+  }, [fetchData]);
+
+  const togglePause = useCallback((documentId: string) => {
+    try {
+      const raw = localStorage.getItem("second-brain-active-strategies");
+      const all: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
+      const updated = all.map((s) => {
+        if (s.documentId === documentId) {
+          return { ...s, status: s.status === "paused" ? "active" : "paused" };
+        }
+        return s;
+      });
+      localStorage.setItem("second-brain-active-strategies", JSON.stringify(updated));
+      // Also update API
+      const target = updated.find((s) => s.documentId === documentId);
+      if (target) {
+        fetch("/api/strategies", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...target, userId: "local" }),
+        }).catch(() => {});
+      }
+      fetchData();
+      window.dispatchEvent(new Event("strategy-activated"));
+    } catch {}
+  }, [fetchData]);
+
+  const killStrategy = useCallback((documentId: string) => {
+    try {
+      const raw = localStorage.getItem("second-brain-active-strategies");
+      const all: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
+      const updated = all.filter((s) => s.documentId !== documentId);
+      localStorage.setItem("second-brain-active-strategies", JSON.stringify(updated));
+      // Also remove from API
+      fetch(`/api/strategies?userId=local&documentId=${documentId}`, { method: "DELETE" }).catch(() => {});
+      fetchData();
+      window.dispatchEvent(new Event("strategy-activated"));
+    } catch {}
   }, [fetchData]);
 
   const activeStrategies = strategies.filter(
@@ -226,6 +297,32 @@ export default function TradeDashboard() {
                       </span>
                     </div>
                   )}
+                </div>
+                {/* Pause + Kill buttons */}
+                <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-800/50">
+                  <button
+                    type="button"
+                    onClick={() => togglePause(s.documentId)}
+                    className={clsx(
+                      "flex items-center gap-1 flex-1 justify-center rounded-md border px-2 py-1 text-[10px] font-medium transition",
+                      s.status === "paused"
+                        ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                        : "border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                    )}
+                  >
+                    {s.status === "paused" ? (
+                      <><Play className="h-3 w-3" /> Resume</>
+                    ) : (
+                      <><Pause className="h-3 w-3" /> Pause</>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => killStrategy(s.documentId)}
+                    className="flex items-center gap-1 flex-1 justify-center rounded-md border border-red-500/30 px-2 py-1 text-[10px] font-medium text-red-400 transition hover:bg-red-500/10"
+                  >
+                    <XCircle className="h-3 w-3" /> Kill
+                  </button>
                 </div>
               </div>
             ))}
