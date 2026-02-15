@@ -33,3 +33,15 @@ body {
   background: #3f3f46;
   border-radius: 999px;
 }
+
+/* Scale up text in side panel and modal overlay */
+.panel-scaled * {
+  font-size: clamp(16px, 1.1em, 48px) !important;
+  line-height: 1.5 !important;
+}
+.panel-scaled h1, .panel-scaled h2, .panel-scaled h3 {
+  font-size: clamp(20px, 1.4em, 56px) !important;
+}
+.panel-scaled input, .panel-scaled textarea {
+  font-size: 18px !important;
+}
