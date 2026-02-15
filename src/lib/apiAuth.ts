@@ -1,6 +1,14 @@
-import { createHash, randomBytes } from "crypto";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+
+// Use Node.js crypto (works in Vercel serverless, not edge)
+const crypto = require("crypto");
+function sha256(input: string): string {
+  return crypto.createHash("sha256").update(input).digest("hex");
+}
+function randomHex(bytes: number): string {
+  return crypto.randomBytes(bytes).toString("hex");
+}
 
 const RATE_LIMITS: Record<string, number> = {
   free: 100,
@@ -10,8 +18,8 @@ const RATE_LIMITS: Record<string, number> = {
 
 /* ── Generate a new API key ── */
 export async function generateApiKey(userId: string, name = "default", plan = "free") {
-  const raw = `sb2_${randomBytes(32).toString("hex")}`;
-  const hash = createHash("sha256").update(raw).digest("hex");
+  const raw = `sb2_${randomHex(32)}`;
+  const hash = sha256(raw);
   const prefix = raw.slice(0, 12);
   const rateLimit = RATE_LIMITS[plan] ?? 100;
 
@@ -56,7 +64,7 @@ export async function validateApiKey(req: NextRequest): Promise<{
     return { valid: false, error: "Missing API key. Pass via x-api-key header or Authorization: Bearer <key>" };
   }
 
-  const hash = createHash("sha256").update(key).digest("hex");
+  const hash = sha256(key);
   const sb = getSupabaseServer();
 
   const { data, error } = await sb
