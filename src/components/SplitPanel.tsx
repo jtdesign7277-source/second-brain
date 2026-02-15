@@ -573,7 +573,7 @@ export default function SplitPanel({
           )}
         </div>
 
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0" style={{ fontSize: "200%" }}>
           <PanelContent target={target} />
         </div>
       </div>
