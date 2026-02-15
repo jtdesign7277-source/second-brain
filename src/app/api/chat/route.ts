@@ -168,8 +168,8 @@ export async function POST(req: Request) {
         const { validateApiKey, logUsage } = await import("@/lib/apiAuth");
         const nextReq = req as any;
         // Quick hash check
-        const crypto = require("crypto");
-        const hash = crypto.createHash("sha256").update(externalKey).digest("hex");
+        const nodeCrypto = await import("node:crypto");
+        const hash = nodeCrypto.createHash("sha256").update(externalKey).digest("hex");
         const { getSupabaseServer } = await import("@/lib/supabase/server");
         const sb = getSupabaseServer();
         const { data } = await sb.from("api_keys").select("id, user_id, rate_limit_per_day, active").eq("key_hash", hash).single();

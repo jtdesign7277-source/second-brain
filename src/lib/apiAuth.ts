@@ -1,13 +1,12 @@
+import nodeCrypto from "node:crypto";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
-// Use Node.js crypto (works in Vercel serverless, not edge)
-const crypto = require("crypto");
 function sha256(input: string): string {
-  return crypto.createHash("sha256").update(input).digest("hex");
+  return nodeCrypto.createHash("sha256").update(input).digest("hex");
 }
 function randomHex(bytes: number): string {
-  return crypto.randomBytes(bytes).toString("hex");
+  return nodeCrypto.randomBytes(bytes).toString("hex");
 }
 
 const RATE_LIMITS: Record<string, number> = {
