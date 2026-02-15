@@ -1,103 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Pencil, Eye, Save, Volume2, Square } from "lucide-react";
 import type { DocumentItem } from "@/types/documents";
+
+export type TTSHandle = {
+  speaking: boolean;
+  speak: (text: string) => Promise<void>;
+  stop: () => void;
+};
 
 export type DocumentViewerProps = {
   document: DocumentItem | null;
   onSave: (doc: DocumentItem) => Promise<void>;
   onClose: () => void;
+  tts?: TTSHandle;
 };
 
-/* ── strip markdown to plain text for TTS ── */
-function stripMarkdown(md: string): string {
-  return md
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^- /gm, "")
-    .replace(/^\d+\.\s/gm, "")
-    .replace(/^---$/gm, "")
-    .replace(/\n{2,}/g, "\n")
-    .trim();
-}
-
-/* ── useSpeech hook — OpenAI TTS (Nova voice) ── */
-function useSpeech() {
-  const [speaking, setSpeaking] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
-
-  // Bind ref to the actual <audio> element rendered in the DOM
-  const bindAudio = useCallback((el: HTMLAudioElement | null) => {
-    audioElRef.current = el;
-  }, []);
-
-  const speak = useCallback(async (text: string) => {
-    const el = audioElRef.current;
-    if (!el) { console.error("TTS: no audio element"); return; }
-
-    // Stop current
-    el.pause();
-    el.removeAttribute("src");
-
-    const plain = stripMarkdown(text);
-    if (!plain) { console.warn("TTS: empty text"); return; }
-
-    setSpeaking(true);
-
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: plain.slice(0, 4000) }),
-      });
-
-      if (!res.ok) throw new Error(`TTS API ${res.status}`);
-
-      const blob = await res.blob();
-      if (blob.size < 100) throw new Error("Empty audio");
-
-      // Revoke previous URL
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
-
-      const url = URL.createObjectURL(blob);
-      setAudioUrl(url);
-      el.src = url;
-      el.load();
-      await el.play();
-    } catch (err) {
-      console.warn("OpenAI TTS failed, browser fallback:", err);
-      setSpeaking(false);
-      // Browser fallback
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(plain.slice(0, 2000));
-        utter.rate = 1.0;
-        utter.onend = () => setSpeaking(false);
-        utter.onerror = () => setSpeaking(false);
-        window.speechSynthesis.speak(utter);
-        setSpeaking(true);
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioUrl]);
-
-  const stop = useCallback(() => {
-    const el = audioElRef.current;
-    if (el) { el.pause(); el.removeAttribute("src"); }
-    window.speechSynthesis?.cancel();
-    setSpeaking(false);
-  }, []);
-
-  const onEnded = useCallback(() => { setSpeaking(false); }, []);
-  const onError = useCallback(() => { console.error("Audio element error"); setSpeaking(false); }, []);
-
-  // The component must render: <audio ref={bindAudio} onEnded={onEnded} onError={onError} />
-  return { speaking, speak, stop, bindAudio, onEnded, onError };
-}
+/* ── Noop TTS fallback ── */
+const noopTTS: TTSHandle = { speaking: false, speak: async () => {}, stop: () => {} };
 
 /* ── RenderedMarkdown ── */
 function RenderedMarkdown({ content }: { content: string }) {
@@ -130,11 +51,11 @@ function RenderedMarkdown({ content }: { content: string }) {
 }
 
 /* ── DocumentViewer ── */
-export default function DocumentViewer({ document, onSave, onClose }: DocumentViewerProps) {
+export default function DocumentViewer({ document, onSave, onClose, tts }: DocumentViewerProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const { speaking, speak, stop, bindAudio, onEnded, onError } = useSpeech();
+  const { speaking, speak, stop } = tts ?? noopTTS;
 
   // Reset when switching documents
   useEffect(() => {
@@ -182,8 +103,6 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
 
   return (
     <div className="flex h-full flex-col">
-      {/* Hidden audio element for TTS playback — must be in DOM for autoplay */}
-      <audio ref={bindAudio} onEnded={onEnded} onError={onError} className="hidden" />
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 min-w-0">
