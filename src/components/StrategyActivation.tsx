@@ -295,11 +295,11 @@ export default function StrategyActivation({
   return (
     <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5">
+        <div className="flex items-center gap-2">
           <div
             className={clsx(
-              "flex h-8 w-8 items-center justify-center rounded-lg border",
+              "flex h-7 w-7 items-center justify-center rounded-lg border",
               isActive
                 ? "bg-emerald-500/10 border-emerald-500/30"
                 : "bg-zinc-800/50 border-zinc-700"
@@ -307,17 +307,17 @@ export default function StrategyActivation({
           >
             <Target
               className={clsx(
-                "h-4 w-4",
+                "h-3.5 w-3.5",
                 isActive ? "text-emerald-400" : "text-zinc-500"
               )}
             />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Strategy Activation</h3>
-            <p className="text-xs text-zinc-500">
+            <h3 className="text-xs font-bold text-white">Strategy Activation</h3>
+            <p className="text-[10px] text-zinc-500 leading-tight">
               {isActive
-                ? "Strategy is live — TradeBot monitoring"
-                : "Check conditions and activate to begin paper trading"}
+                ? "Live — TradeBot monitoring"
+                : "Check conditions to activate"}
             </p>
           </div>
         </div>
@@ -351,86 +351,80 @@ export default function StrategyActivation({
         )}
       </div>
 
-      {/* Settings row */}
-      <div className="grid grid-cols-5 gap-3 border-b border-zinc-800 px-5 py-3">
-        <div>
-          <label className="text-[10px] uppercase tracking-wide text-zinc-500">
-            Symbol
-          </label>
-          <input
-            value={symbol}
-            onChange={(e) => { const v = e.target.value.toUpperCase(); setSymbol(v); syncPanels({ symbol: v }); }}
-            disabled={isActive}
-            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1.5 text-sm font-mono text-amber-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wide text-zinc-500">
-            Position Size
-          </label>
-          <div className="relative mt-1">
-            <span className="absolute left-2 top-1.5 text-sm text-zinc-500">$</span>
+      {/* Settings */}
+      <div className="border-b border-zinc-800 px-4 py-3 space-y-2">
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[9px] uppercase tracking-wide text-zinc-500">Symbol</label>
+            <input
+              value={symbol}
+              onChange={(e) => { const v = e.target.value.toUpperCase(); setSymbol(v); syncPanels({ symbol: v }); }}
+              disabled={isActive}
+              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-xs font-mono text-amber-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="text-[9px] uppercase tracking-wide text-zinc-500">Size</label>
+            <div className="relative mt-1">
+              <span className="absolute left-2 top-1 text-xs text-zinc-500">$</span>
+              <input
+                type="number"
+                value={positionSize}
+                onChange={(e) => { const v = Number(e.target.value); setPositionSize(v); syncPanels({ positionSize: v }); }}
+                disabled={isActive}
+                className="w-full rounded-md border border-zinc-700 bg-zinc-800/50 pl-5 pr-1 py-1 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[9px] uppercase tracking-wide text-zinc-500">Max/Day</label>
             <input
               type="number"
-              value={positionSize}
-              onChange={(e) => { const v = Number(e.target.value); setPositionSize(v); syncPanels({ positionSize: v }); }}
+              value={maxDailyTrades}
+              onChange={(e) => { const v = Number(e.target.value); setMaxDailyTrades(v); syncPanels({ maxDailyTrades: v }); }}
               disabled={isActive}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-800/50 pl-6 pr-2 py-1.5 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
+              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
             />
           </div>
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wide text-zinc-500">
-            Stop Loss %
-          </label>
-          <input
-            type="number"
-            value={stopLoss}
-            onChange={(e) => { const v = Number(e.target.value); setStopLoss(v); syncPanels({ stopLoss: v }); }}
-            disabled={isActive}
-            step={0.5}
-            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1.5 text-sm text-red-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wide text-zinc-500">
-            Take Profit %
-          </label>
-          <input
-            type="number"
-            value={takeProfit}
-            onChange={(e) => { const v = Number(e.target.value); setTakeProfit(v); syncPanels({ takeProfit: v }); }}
-            disabled={isActive}
-            step={0.5}
-            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1.5 text-sm text-emerald-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wide text-zinc-500">
-            Max Daily Trades
-          </label>
-          <input
-            type="number"
-            value={maxDailyTrades}
-            onChange={(e) => { const v = Number(e.target.value); setMaxDailyTrades(v); syncPanels({ maxDailyTrades: v }); }}
-            disabled={isActive}
-            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1.5 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
-          />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-[9px] uppercase tracking-wide text-zinc-500">Stop Loss %</label>
+            <input
+              type="number"
+              value={stopLoss}
+              onChange={(e) => { const v = Number(e.target.value); setStopLoss(v); syncPanels({ stopLoss: v }); }}
+              disabled={isActive}
+              step={0.5}
+              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-xs text-red-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="text-[9px] uppercase tracking-wide text-zinc-500">Take Profit %</label>
+            <input
+              type="number"
+              value={takeProfit}
+              onChange={(e) => { const v = Number(e.target.value); setTakeProfit(v); syncPanels({ takeProfit: v }); }}
+              disabled={isActive}
+              step={0.5}
+              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-xs text-emerald-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
+            />
+          </div>
         </div>
       </div>
 
       {/* Conditions checklist */}
-      <div className="px-5 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
             Pre-Trade Checklist
           </span>
-          <span className="text-xs text-zinc-600">
-            {checkedCount}/{conditions.length} conditions
+          <span className="text-[10px] text-zinc-600">
+            {checkedCount}/{conditions.length}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5">
           {conditions.map((condition) => (
             <button
               key={condition.id}
@@ -438,7 +432,7 @@ export default function StrategyActivation({
               onClick={() => !isActive && toggleCondition(condition.id)}
               disabled={isActive}
               className={clsx(
-                "flex items-start gap-3 rounded-lg border p-3 text-left transition",
+                "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition",
                 condition.checked
                   ? "border-emerald-500/30 bg-emerald-500/5"
                   : "border-zinc-800 bg-zinc-900/30 hover:border-zinc-700",
@@ -448,39 +442,26 @@ export default function StrategyActivation({
               {/* Checkbox */}
               <div
                 className={clsx(
-                  "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition",
+                  "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
                   condition.checked
                     ? "border-emerald-500 bg-emerald-500"
                     : "border-zinc-600 bg-zinc-800"
                 )}
               >
                 {condition.checked && (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                  <CheckCircle2 className="h-3 w-3 text-white" />
                 )}
               </div>
 
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={clsx(
-                      "transition",
-                      condition.checked ? "text-emerald-400" : "text-zinc-500"
-                    )}
-                  >
-                    {condition.icon}
-                  </span>
-                  <span
-                    className={clsx(
-                      "text-sm font-medium",
-                      condition.checked ? "text-white" : "text-zinc-300"
-                    )}
-                  >
-                    {condition.label}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  {condition.description}
-                </p>
+                <span
+                  className={clsx(
+                    "text-[11px] font-medium leading-tight",
+                    condition.checked ? "text-white" : "text-zinc-300"
+                  )}
+                >
+                  {condition.label}
+                </span>
               </div>
             </button>
           ))}
@@ -488,7 +469,7 @@ export default function StrategyActivation({
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center justify-between border-t border-zinc-800 px-5 py-3">
+      <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
         {!isActive ? (
           <>
             <div className="flex items-center gap-2 text-xs text-zinc-500">
