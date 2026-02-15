@@ -17,7 +17,7 @@ export type SidebarProps = {
   search: string;
   onSearchChange: (value: string) => void;
   onSelect: (doc: DocumentItem) => void;
-  onCreate: () => void;
+  onCreate: (name?: string) => void;
   onDelete: (id: string) => void;
 };
 
@@ -445,6 +445,22 @@ export default function Sidebar({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: TreeNode } | null>(null);
   const [dragState, setDragState] = useState<{ dragId: string | null; overId: string | null }>({ dragId: null, overId: null });
+  const [showNewInput, setShowNewInput] = useState(false);
+  const [newDocName, setNewDocName] = useState("");
+  const newInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus new doc input when shown
+  useEffect(() => {
+    if (showNewInput && newInputRef.current) newInputRef.current.focus();
+  }, [showNewInput]);
+
+  const handleNewDocSubmit = useCallback(() => {
+    const name = newDocName.trim();
+    if (name) onCreate(name);
+    else onCreate();
+    setNewDocName("");
+    setShowNewInput(false);
+  }, [newDocName, onCreate]);
 
   // Build tree from real documents
   const tree = useMemo(() => buildTree(documents), [documents]);
@@ -591,22 +607,55 @@ export default function Sidebar({
           </div>
           <button
             type="button"
-            onClick={onCreate}
+            onClick={() => setShowNewInput((v) => !v)}
             title="New File"
             className="flex items-center justify-center rounded-lg transition"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "rgba(255,255,255,0.5)",
+              background: showNewInput ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.04)",
+              border: showNewInput ? "1px solid rgba(167,139,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
+              color: showNewInput ? "#a78bfa" : "rgba(255,255,255,0.5)",
               padding: "7px 8px",
               cursor: "pointer",
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.8)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
+            onMouseEnter={(e) => { if (!showNewInput) { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.8)"; } }}
+            onMouseLeave={(e) => { if (!showNewInput) { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; } }}
           >
             {ICONS.plus}
           </button>
         </div>
+
+        {/* New document name input */}
+        {showNewInput && (
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              ref={newInputRef}
+              value={newDocName}
+              onChange={(e) => setNewDocName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleNewDocSubmit();
+                if (e.key === "Escape") { setShowNewInput(false); setNewDocName(""); }
+              }}
+              placeholder="Document name..."
+              className="flex-1 rounded-lg py-2 px-3 text-[13px] text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(167,139,250,0.4)",
+              }}
+            />
+            <button
+              onClick={handleNewDocSubmit}
+              className="rounded-lg px-3 py-2 text-[12px] font-semibold transition"
+              style={{
+                background: "rgba(167,139,250,0.15)",
+                border: "1px solid rgba(167,139,250,0.3)",
+                color: "#a78bfa",
+                cursor: "pointer",
+              }}
+            >
+              Create
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tree */}

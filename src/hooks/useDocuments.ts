@@ -29,7 +29,7 @@ export type DocumentsState = {
   setSearch: (value: string) => void;
   selectDocument: (doc: DocumentItem) => void;
   deselectDocument: () => void;
-  createDocument: () => Promise<void>;
+  createDocument: (name?: string) => Promise<void>;
   updateDocument: (doc: DocumentItem) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -109,14 +109,14 @@ export function useDocuments(): DocumentsState {
     );
   }, [documents, search]);
 
-  const createDocument = useCallback(async () => {
+  const createDocument = useCallback(async (name?: string) => {
     const now = new Date().toISOString();
     const today = new Date();
     const dateStr = today.toLocaleDateString("en-CA"); // YYYY-MM-DD
     const doc: DocumentItem = {
       id: crypto.randomUUID(),
       user_id: "local",
-      title: "Untitled",
+      title: name?.trim() || "Untitled",
       content: "",
       folder: dateStr,
       created_at: now,
