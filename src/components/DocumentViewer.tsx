@@ -6,7 +6,7 @@ import type { DocumentItem } from "@/types/documents";
 
 export type TTSHandle = {
   speaking: boolean;
-  speak: (text: string) => Promise<void>;
+  speak: (text: string) => Promise<void> | void;
   stop: () => void;
 };
 

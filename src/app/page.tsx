@@ -11,43 +11,34 @@ import TradingWidgets from "@/components/TradingWidgets";
 import { useDocuments } from "@/hooks/useDocuments";
 import { seedIfNeeded } from "@/lib/seedDocuments";
 
-/* ── strip markdown to plain text for TTS ── */
-function stripMarkdown(md: string): string {
-  return md
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/^- /gm, "")
-    .replace(/^\d+\.\s/gm, "")
-    .replace(/^---$/gm, "")
-    .replace(/\n{2,}/g, "\n")
-    .trim();
-}
-
-/* ── Global TTS hook (lives at page level, persists across doc switches) ── */
+/* ── Dead simple TTS — no fancy refs, just fetch + play ── */
 function useGlobalTTS() {
   const [speaking, setSpeaking] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const urlRef = useRef<string | null>(null);
-
-  const bindAudio = useCallback((el: HTMLAudioElement | null) => {
-    audioRef.current = el;
-  }, []);
+  const currentAudio = useRef<HTMLAudioElement | null>(null);
 
   const speak = useCallback(async (text: string) => {
-    const el = audioRef.current;
-    if (!el) return;
-
-    // Stop current
-    el.pause();
-    el.currentTime = 0;
+    // Kill anything playing
+    if (currentAudio.current) {
+      currentAudio.current.pause();
+      currentAudio.current.src = "";
+      currentAudio.current = null;
+    }
     window.speechSynthesis?.cancel();
 
-    const plain = stripMarkdown(text);
-    if (!plain) return;
+    // Strip markdown
+    const plain = text
+      .replace(/```[\s\S]*?```/g, "")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/^- /gm, "")
+      .replace(/^\d+\.\s/gm, "")
+      .replace(/^---$/gm, "")
+      .replace(/\n{2,}/g, "\n")
+      .trim();
 
+    if (!plain) return;
     setSpeaking(true);
 
     try {
@@ -56,55 +47,46 @@ function useGlobalTTS() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: plain.slice(0, 4000) }),
       });
-      if (!res.ok) throw new Error(`API ${res.status}`);
-
+      if (!res.ok) throw new Error(`${res.status}`);
       const blob = await res.blob();
-      if (blob.size < 100) throw new Error("Empty audio");
 
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-      const url = URL.createObjectURL(blob);
-      urlRef.current = url;
+      // Convert to data URL (avoids blob URL lifecycle issues)
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
 
-      el.src = url;
-      el.load();
-      await el.play();
-    } catch (err) {
-      console.warn("Nova TTS failed, browser fallback:", err);
-      // Browser fallback
+      const audio = new Audio(dataUrl);
+      currentAudio.current = audio;
+      audio.onended = () => { setSpeaking(false); currentAudio.current = null; };
+      audio.onerror = () => { setSpeaking(false); currentAudio.current = null; };
+      await audio.play();
+    } catch {
+      // Fallback: browser voice
+      setSpeaking(false);
       if (window.speechSynthesis) {
         const utter = new SpeechSynthesisUtterance(plain.slice(0, 2000));
-        utter.rate = 1.0;
         utter.onend = () => setSpeaking(false);
         utter.onerror = () => setSpeaking(false);
         window.speechSynthesis.speak(utter);
-      } else {
-        setSpeaking(false);
+        setSpeaking(true);
       }
     }
   }, []);
 
   const stop = useCallback(() => {
-    const el = audioRef.current;
-    if (el) {
-      el.pause();
-      el.removeAttribute("src");
-      el.load(); // Reset the element fully
+    if (currentAudio.current) {
+      currentAudio.current.pause();
+      currentAudio.current.src = "";
+      currentAudio.current = null;
     }
-    if (urlRef.current) { URL.revokeObjectURL(urlRef.current); urlRef.current = null; }
     window.speechSynthesis?.cancel();
     setSpeaking(false);
   }, []);
 
-  const onEnded = useCallback(() => {
-    // Clean up src so it doesn't replay on page revisit
-    const el = audioRef.current;
-    if (el) { el.removeAttribute("src"); el.load(); }
-    if (urlRef.current) { URL.revokeObjectURL(urlRef.current); urlRef.current = null; }
-    setSpeaking(false);
-  }, []);
-  const onError = useCallback(() => setSpeaking(false), []);
-
-  return { speaking, speak, stop, bindAudio, onEnded, onError };
+  return { speaking, speak, stop };
 }
 
 export default function Home() {
@@ -132,8 +114,6 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-full bg-zinc-950 text-zinc-100">
-      {/* Global audio element — persists across all doc switches */}
-      <audio ref={tts.bindAudio} onEnded={tts.onEnded} onError={tts.onError} preload="none" className="hidden" />
       <Sidebar
         documents={documents}
         selectedId={selected?.id ?? null}
