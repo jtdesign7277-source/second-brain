@@ -33,8 +33,9 @@ function extractTickers(text: string): string[] {
 function detectPeriod(text: string): string {
   const lower = text.toLowerCase();
   if (lower.includes("1 month") || lower.includes("one month") || lower.includes("last month")) return "1mo";
-  if (lower.includes("6 month") || lower.includes("six month") || lower.includes("half year")) return "6mo";
-  if (lower.includes("1 year") || lower.includes("one year") || lower.includes("12 month") || lower.includes("last year")) return "1y";
+  if (/(?:2|two)\s*month/i.test(lower)) return "2mo";
+  if (/(?:6|six)\s*month|half\s*year/i.test(lower)) return "6mo";
+  if (/(?:1|one|last)\s*year|12\s*month|twelve\s*month/i.test(lower)) return "1y";
   return "3mo"; // default
 }
 
@@ -141,13 +142,11 @@ export async function POST(req: Request) {
     const allText = messages.map((m: any) => m.content).join(" ");
     const tickers = extractTickers(allText);
     const period = detectPeriod(allText);
-    const needsHistory = /backtest|history|historical|last.*month|last.*year|past|ago|performance|setup|would have|best day|worst day/i.test(allText);
-
     let marketContext = "";
     if (tickers.length > 0) {
       const dataPromises = tickers.slice(0, 3).map(async (t) => {
         const snapshot = await fetchSnapshot(t);
-        const history = needsHistory ? await fetchHistory(t, period) : "";
+        const history = await fetchHistory(t, period);
         return snapshot + history;
       });
       const results = await Promise.all(dataPromises);
