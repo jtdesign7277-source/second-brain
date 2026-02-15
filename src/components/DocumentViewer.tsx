@@ -39,6 +39,9 @@ function useSpeech() {
     const plain = stripMarkdown(text);
     if (!plain) return;
 
+    // Create Audio element synchronously (preserves user gesture for autoplay)
+    const audio = new Audio();
+    audioRef.current = audio;
     setSpeaking(true);
 
     try {
@@ -51,29 +54,32 @@ function useSpeech() {
       if (!res.ok) {
         console.error("TTS error:", res.status);
         setSpeaking(false);
+        audioRef.current = null;
         return;
       }
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
 
       audio.onended = () => {
         setSpeaking(false);
         URL.revokeObjectURL(url);
         audioRef.current = null;
       };
-      audio.onerror = () => {
+      audio.onerror = (e) => {
+        console.error("Audio playback error:", e);
         setSpeaking(false);
         URL.revokeObjectURL(url);
         audioRef.current = null;
       };
 
+      audio.src = url;
+      audio.load();
       await audio.play();
     } catch (err) {
       console.error("TTS failed:", err);
       setSpeaking(false);
+      audioRef.current = null;
     }
   }, []);
 
