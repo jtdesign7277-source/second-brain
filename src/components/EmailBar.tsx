@@ -61,6 +61,24 @@ export default function EmailBar({
         </svg>
         Market Intel
       </button>
+
+      <button
+        type="button"
+        onClick={() => onOpenPanel?.("trading")}
+        className="group flex items-center gap-2.5 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-5 py-2.5 text-sm text-zinc-300 transition hover:border-emerald-500/50 hover:text-emerald-400"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          className="h-4 w-4 text-zinc-500 transition group-hover:text-emerald-400"
+        >
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+        Paper Trading
+      </button>
     </div>
   );
 }

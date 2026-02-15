@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw, Send, CheckCircle, Maximize2, X } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw, Send, CheckCircle, Maximize2, X, DollarSign } from "lucide-react";
+import TradeDashboard from "./TradeDashboard";
 import clsx from "clsx";
 
-export type PanelTarget = "x" | "email" | "market-intel" | null;
+export type PanelTarget = "x" | "email" | "market-intel" | "trading" | null;
 
 type Tweet = {
   id: string;
@@ -494,6 +495,7 @@ function MarketIntelFeed() {
 function panelLabel(target: NonNullable<PanelTarget>) {
   if (target === "x") return "@stratify_hq";
   if (target === "market-intel") return "Market Intel";
+  if (target === "trading") return "Paper Trading";
   return "Compose";
 }
 
@@ -510,6 +512,8 @@ function PanelIcon({ target, className }: { target: NonNullable<PanelTarget>; cl
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
       </svg>
     );
+  if (target === "trading")
+    return <DollarSign className={className || "h-3.5 w-3.5"} />;
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className || "h-3.5 w-3.5"}>
       <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -521,6 +525,7 @@ function PanelIcon({ target, className }: { target: NonNullable<PanelTarget>; cl
 function PanelContent({ target, expanded }: { target: NonNullable<PanelTarget>; expanded?: boolean }) {
   if (target === "x") return expanded ? <XFeedExpanded /> : <XFeed />;
   if (target === "market-intel") return <MarketIntelFeed />;
+  if (target === "trading") return <TradeDashboard />;
   return <EmailCompose />;
 }
 

@@ -128,32 +128,55 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30">
-        {editing ? (
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            className="h-full w-full resize-none bg-transparent p-4 text-sm font-mono text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
-            placeholder="Edit content..."
-          />
-        ) : (
-          <div className="p-4">
-            {document.content.trim() ? (
-              <RenderedMarkdown content={document.content} />
-            ) : (
-              <p className="text-zinc-500 text-sm">Empty document. Click Edit to add content.</p>
-            )}
+      {document.folder === STRATEGIES_FOLDER && !editing ? (
+        /* Strategy layout: doc on left, activation panel on right */
+        <div className="flex flex-1 gap-3 min-h-0">
+          {/* Left — strategy description */}
+          <div className="flex-1 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30">
+            <div className="p-4">
+              {document.content.trim() ? (
+                <RenderedMarkdown content={document.content} />
+              ) : (
+                <p className="text-zinc-500 text-sm">Empty document. Click Edit to add content.</p>
+              )}
 
-            {/* Strategy Activation Panel — only shows for strategy documents */}
-            {document.folder === STRATEGIES_FOLDER && (
+              {/* Activation panel also at bottom */}
               <StrategyActivation
                 documentId={document.id}
                 title={document.title}
               />
-            )}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Right — cloned activation panel */}
+          <div className="w-[400px] shrink-0 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30">
+            <StrategyActivation
+              documentId={document.id}
+              title={document.title}
+            />
+          </div>
+        </div>
+      ) : (
+        /* Normal document layout */
+        <div className="flex-1 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/30">
+          {editing ? (
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              className="h-full w-full resize-none bg-transparent p-4 text-sm font-mono text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+              placeholder="Edit content..."
+            />
+          ) : (
+            <div className="p-4">
+              {document.content.trim() ? (
+                <RenderedMarkdown content={document.content} />
+              ) : (
+                <p className="text-zinc-500 text-sm">Empty document. Click Edit to add content.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

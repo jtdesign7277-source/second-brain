@@ -170,10 +170,37 @@ export default function StrategyActivation({
     load();
   }, [documentId]);
 
-  const toggleCondition = (id: string) => {
-    setConditions((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, checked: !c.checked } : c))
+  // Sync between cloned panels via custom events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail.documentId !== documentId) return;
+      if (detail.conditions) setConditions(detail.conditions);
+      if (detail.symbol !== undefined) setSymbol(detail.symbol);
+      if (detail.positionSize !== undefined) setPositionSize(detail.positionSize);
+      if (detail.maxDailyTrades !== undefined) setMaxDailyTrades(detail.maxDailyTrades);
+      if (detail.stopLoss !== undefined) setStopLoss(detail.stopLoss);
+      if (detail.takeProfit !== undefined) setTakeProfit(detail.takeProfit);
+      if (detail.strategy !== undefined) setStrategy(detail.strategy);
+    };
+    window.addEventListener("strategy-sync", handler);
+    return () => window.removeEventListener("strategy-sync", handler);
+  }, [documentId]);
+
+  const syncPanels = (updates: Record<string, unknown>) => {
+    window.dispatchEvent(
+      new CustomEvent("strategy-sync", {
+        detail: { documentId, ...updates },
+      })
     );
+  };
+
+  const toggleCondition = (id: string) => {
+    setConditions((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, checked: !c.checked } : c));
+      syncPanels({ conditions: next });
+      return next;
+    });
   };
 
   const allChecked = conditions.every((c) => c.checked);
@@ -328,7 +355,7 @@ export default function StrategyActivation({
           </label>
           <input
             value={symbol}
-            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+            onChange={(e) => { const v = e.target.value.toUpperCase(); setSymbol(v); syncPanels({ symbol: v }); }}
             disabled={isActive}
             className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1.5 text-sm font-mono text-amber-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
           />
@@ -342,7 +369,7 @@ export default function StrategyActivation({
             <input
               type="number"
               value={positionSize}
-              onChange={(e) => setPositionSize(Number(e.target.value))}
+              onChange={(e) => { const v = Number(e.target.value); setPositionSize(v); syncPanels({ positionSize: v }); }}
               disabled={isActive}
               className="w-full rounded-md border border-zinc-700 bg-zinc-800/50 pl-6 pr-2 py-1.5 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
             />
@@ -355,7 +382,7 @@ export default function StrategyActivation({
           <input
             type="number"
             value={stopLoss}
-            onChange={(e) => setStopLoss(Number(e.target.value))}
+            onChange={(e) => { const v = Number(e.target.value); setStopLoss(v); syncPanels({ stopLoss: v }); }}
             disabled={isActive}
             step={0.5}
             className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1.5 text-sm text-red-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
@@ -368,7 +395,7 @@ export default function StrategyActivation({
           <input
             type="number"
             value={takeProfit}
-            onChange={(e) => setTakeProfit(Number(e.target.value))}
+            onChange={(e) => { const v = Number(e.target.value); setTakeProfit(v); syncPanels({ takeProfit: v }); }}
             disabled={isActive}
             step={0.5}
             className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1.5 text-sm text-emerald-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
@@ -381,7 +408,7 @@ export default function StrategyActivation({
           <input
             type="number"
             value={maxDailyTrades}
-            onChange={(e) => setMaxDailyTrades(Number(e.target.value))}
+            onChange={(e) => { const v = Number(e.target.value); setMaxDailyTrades(v); syncPanels({ maxDailyTrades: v }); }}
             disabled={isActive}
             className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1.5 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
           />
