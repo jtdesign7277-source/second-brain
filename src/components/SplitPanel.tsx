@@ -237,7 +237,7 @@ function EmailCompose() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
+      <div className="overflow-y-auto px-3 py-3 space-y-2.5">
         <div className="text-[10px] text-zinc-500 uppercase tracking-wide">From: jeff@stratify-associates.com</div>
         <div>
           <label className="text-[10px] text-zinc-500 uppercase tracking-wide">To</label>
@@ -257,21 +257,19 @@ function EmailCompose() {
             className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none"
           />
         </div>
-        <div className="flex-1">
+        <div>
           <label className="text-[10px] text-zinc-500 uppercase tracking-wide">Message</label>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Write your message..."
-            rows={8}
+            rows={6}
             className="mt-1 w-full resize-none rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none"
           />
         </div>
         {error && (
           <div className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>
         )}
-      </div>
-      <div className="border-t border-zinc-800 px-3 py-2.5">
         <button
           type="button"
           onClick={handleSend}
