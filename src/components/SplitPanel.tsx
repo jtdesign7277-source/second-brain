@@ -187,6 +187,81 @@ function XFeed() {
   );
 }
 
+/* ── X Feed Expanded (split view) ── */
+function XFeedColumn({ feed, label }: { feed: "mine" | "following"; label: string }) {
+  const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTweets = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/x-feed?feed=${feed}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to load");
+        setTweets([]);
+      } else {
+        setTweets(data.data ?? []);
+      }
+    } catch {
+      setError("Failed to load feed");
+    } finally {
+      setLoading(false);
+    }
+  }, [feed]);
+
+  useEffect(() => {
+    fetchTweets();
+  }, [fetchTweets]);
+
+  return (
+    <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex items-center justify-between border-b border-zinc-800/50 px-4 py-2">
+        <span className="text-sm font-semibold text-zinc-200">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-600">{tweets.length} tweets</span>
+          <button
+            type="button"
+            onClick={fetchTweets}
+            disabled={loading}
+            className="flex items-center gap-1 text-xs text-zinc-600 transition hover:text-zinc-300"
+          >
+            <RefreshCw className={clsx("h-3 w-3", loading && "animate-spin")} />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+        {loading && tweets.length === 0 && (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="h-4 w-4 animate-spin text-zinc-600" />
+          </div>
+        )}
+        {error && (
+          <div className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>
+        )}
+        {tweets.map((tweet) => (
+          <TweetCard
+            key={tweet.id}
+            tweet={tweet}
+            defaultAuthor={feed === "mine" ? "stratify_hq" : undefined}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function XFeedExpanded() {
+  return (
+    <div className="flex h-full divide-x divide-zinc-800">
+      <XFeedColumn feed="mine" label="My Tweets" />
+      <XFeedColumn feed="following" label="Following" />
+    </div>
+  );
+}
+
 /* ── Email Compose ── */
 function EmailCompose() {
   const [to, setTo] = useState("");
@@ -443,8 +518,8 @@ function PanelIcon({ target, className }: { target: NonNullable<PanelTarget>; cl
   );
 }
 
-function PanelContent({ target }: { target: NonNullable<PanelTarget> }) {
-  if (target === "x") return <XFeed />;
+function PanelContent({ target, expanded }: { target: NonNullable<PanelTarget>; expanded?: boolean }) {
+  if (target === "x") return expanded ? <XFeedExpanded /> : <XFeed />;
   if (target === "market-intel") return <MarketIntelFeed />;
   return <EmailCompose />;
 }
@@ -534,9 +609,9 @@ export default function SplitPanel({
             </div>
 
             {/* Modal content — doubled text size for readability */}
-            <div className="flex-1 overflow-y-auto modal-expanded" style={{ height: "70vh", fontSize: "200%" }}>
-              <div className="px-6 py-4">
-                <PanelContent target={target} />
+            <div className="flex-1 overflow-y-auto modal-expanded" style={{ height: "70vh", fontSize: target === "x" ? undefined : "200%" }}>
+              <div className={target === "x" ? "h-full" : "px-6 py-4"}>
+                <PanelContent target={target} expanded />
               </div>
             </div>
           </div>
