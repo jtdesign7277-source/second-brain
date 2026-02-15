@@ -76,9 +76,16 @@ function groupByFolder(docs: DocumentItem[]): { cronGroups: FolderGroup[]; strat
   const regularGroups: FolderGroup[] = [];
   const sortedKeys = [...map.keys()].sort((a, b) => b.localeCompare(a));
   for (const key of sortedKeys) {
+    // Shorten date-prefixed folder names: "2026-02-14 — Foo" → "2/14/26 — Foo"
+    let label = key;
+    const dateMatch = key.match(/^(\d{4})-(\d{2})-(\d{2})(.*)/);
+    if (dateMatch) {
+      const [, y, m, d, rest] = dateMatch;
+      label = `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}${rest}`;
+    }
     regularGroups.push({
       folder: key,
-      label: key,
+      label,
       docs: map.get(key)!,
       isCron: false,
     });
