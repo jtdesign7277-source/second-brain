@@ -24,74 +24,74 @@ function stripMarkdown(md: string): string {
     .trim();
 }
 
-/* ── pick the "brainrot" voice (robotic male US English) ── */
-function pickBrainrotVoice(): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis.getVoices();
-
-  // Priority order — the classic TikTok / Roblox brainrot narration voices
-  const preferred = [
-    "Microsoft David",        // Windows robotic male — the classic one
-    "Google US English",      // Chrome robotic male
-    "Daniel",                 // macOS UK male — flat & robotic
-    "Alex",                   // macOS US male — monotone
-    "Samantha",               // fallback macOS
-  ];
-
-  for (const name of preferred) {
-    const match = voices.find(
-      (v) => v.name.includes(name) && v.lang.startsWith("en")
-    );
-    if (match) return match;
-  }
-
-  // Fallback: any English male-ish voice
-  return (
-    voices.find((v) => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ??
-    voices.find((v) => v.lang.startsWith("en")) ??
-    null
-  );
-}
-
-/* ── useSpeech hook ── */
+/* ── useSpeech hook — OpenAI TTS (Nova voice) ── */
 function useSpeech() {
   const [speaking, setSpeaking] = useState(false);
-  const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const speak = useCallback((text: string) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-    // Cancel any current speech
-    window.speechSynthesis.cancel();
+  const speak = useCallback(async (text: string) => {
+    // Stop any current playback
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
 
     const plain = stripMarkdown(text);
     if (!plain) return;
 
-    const utter = new SpeechSynthesisUtterance(plain);
-    const voice = pickBrainrotVoice();
-    if (voice) utter.voice = voice;
+    setSpeaking(true);
 
-    // Brainrot TTS style: slightly fast, flat pitch
-    utter.rate = 1.15;
-    utter.pitch = 0.85;
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: plain }),
+      });
 
-    utter.onstart = () => setSpeaking(true);
-    utter.onend = () => setSpeaking(false);
-    utter.onerror = () => setSpeaking(false);
+      if (!res.ok) {
+        console.error("TTS error:", res.status);
+        setSpeaking(false);
+        return;
+      }
 
-    utterRef.current = utter;
-    window.speechSynthesis.speak(utter);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+      };
+      audio.onerror = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error("TTS failed:", err);
+      setSpeaking(false);
+    }
   }, []);
 
   const stop = useCallback(() => {
-    if (typeof window === "undefined") return;
-    window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     setSpeaking(false);
   }, []);
 
   // Stop on unmount
   useEffect(() => {
     return () => {
-      window.speechSynthesis?.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, []);
 
@@ -134,16 +134,6 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const { speaking, speak, stop } = useSpeech();
-
-  // Load voices (Chrome loads them async)
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-      };
-    }
-  }, []);
 
   // Reset when switching documents
   useEffect(() => {
