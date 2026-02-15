@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { Send, ChevronDown, ChevronRight, Copy, Check, Bookmark } from "lucide-react";
 import { STRATEGIES_FOLDER } from "@/lib/cronFolders";
+import BacktestBuilder from "./BacktestBuilder";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChat } from "@/hooks/useChat";
@@ -539,6 +540,7 @@ function RotatingExamples({ onSelect }: { onSelect: (prompt: string) => void }) 
 export function ChatFull() {
   const { messages, input, setInput, sendMessage, streaming } = useChat();
   const [saved, setSaved] = useState(false);
+  const [showBuilder, setShowBuilder] = useState(false);
 
   // Scan ALL assistant messages for code — show the latest one
   const allContent = messages.filter(m => m.role === "assistant" && m.content).map(m => m.content);
@@ -590,9 +592,26 @@ export function ChatFull() {
             <div className="text-xs text-emerald-400">online</div>
           </div>
           {messages.length === 0 && (
-            <RotatingExamples onSelect={(prompt) => setInput(prompt)} />
+            <>
+              <RotatingExamples onSelect={(prompt) => setInput(prompt)} />
+              <button
+                type="button"
+                onClick={() => setShowBuilder(true)}
+                className="ml-2 flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/8 px-3 py-1.5 text-[11px] font-bold text-emerald-400 transition hover:bg-emerald-500/15 hover:border-emerald-500/50 whitespace-nowrap"
+              >
+                🚀 Build
+              </button>
+            </>
           )}
         </div>
+
+        {/* Backtest Builder Modal */}
+        {showBuilder && (
+          <BacktestBuilder
+            onSubmit={(prompt) => setInput(prompt)}
+            onClose={() => setShowBuilder(false)}
+          />
+        )}
 
         {/* Messages — strip code blocks so they only show in right panel */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-2">
