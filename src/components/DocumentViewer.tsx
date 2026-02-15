@@ -27,22 +27,25 @@ function stripMarkdown(md: string): string {
 /* ── useSpeech hook — OpenAI TTS (Nova voice) ── */
 function useSpeech() {
   const [speaking, setSpeaking] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  // Bind ref to the actual <audio> element rendered in the DOM
+  const bindAudio = useCallback((el: HTMLAudioElement | null) => {
+    audioElRef.current = el;
+  }, []);
 
   const speak = useCallback(async (text: string) => {
-    // Stop any current playback
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    const el = audioElRef.current;
+    if (!el) { console.error("TTS: no audio element"); return; }
+
+    // Stop current
+    el.pause();
+    el.removeAttribute("src");
 
     const plain = stripMarkdown(text);
-    if (!plain) { console.warn("TTS: no text after stripping markdown"); return; }
+    if (!plain) { console.warn("TTS: empty text"); return; }
 
-    // Create Audio element synchronously (preserves user gesture for autoplay)
-    const audio = new Audio();
-    audioRef.current = audio;
     setSpeaking(true);
 
     try {
@@ -52,72 +55,48 @@ function useSpeech() {
         body: JSON.stringify({ text: plain.slice(0, 4000) }),
       });
 
-      if (!res.ok) {
-        throw new Error(`TTS API returned ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`TTS API ${res.status}`);
 
       const blob = await res.blob();
-      if (blob.size < 100) {
-        throw new Error("TTS returned empty audio");
-      }
+      if (blob.size < 100) throw new Error("Empty audio");
+
+      // Revoke previous URL
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
 
       const url = URL.createObjectURL(blob);
-
-      audio.onended = () => {
-        setSpeaking(false);
-        URL.revokeObjectURL(url);
-        audioRef.current = null;
-      };
-      audio.onerror = (e) => {
-        console.error("Audio playback error:", e);
-        setSpeaking(false);
-        URL.revokeObjectURL(url);
-        audioRef.current = null;
-      };
-
-      audio.src = url;
-      audio.load();
-      await audio.play();
+      setAudioUrl(url);
+      el.src = url;
+      el.load();
+      await el.play();
     } catch (err) {
-      console.warn("OpenAI TTS failed, falling back to browser speech:", err);
-      audioRef.current = null;
-      
-      // Fallback to browser SpeechSynthesis
-      if (typeof window !== "undefined" && window.speechSynthesis) {
+      console.warn("OpenAI TTS failed, browser fallback:", err);
+      setSpeaking(false);
+      // Browser fallback
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(plain.slice(0, 2000));
         utter.rate = 1.0;
-        utter.pitch = 1.0;
-        const voices = window.speechSynthesis.getVoices();
-        const englishVoice = voices.find(v => v.lang.startsWith("en"));
-        if (englishVoice) utter.voice = englishVoice;
         utter.onend = () => setSpeaking(false);
         utter.onerror = () => setSpeaking(false);
         window.speechSynthesis.speak(utter);
-      } else {
-        setSpeaking(false);
+        setSpeaking(true);
       }
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioUrl]);
 
   const stop = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    const el = audioElRef.current;
+    if (el) { el.pause(); el.removeAttribute("src"); }
+    window.speechSynthesis?.cancel();
     setSpeaking(false);
   }, []);
 
-  // Stop on unmount
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
+  const onEnded = useCallback(() => { setSpeaking(false); }, []);
+  const onError = useCallback(() => { console.error("Audio element error"); setSpeaking(false); }, []);
 
-  return { speaking, speak, stop };
+  // The component must render: <audio ref={bindAudio} onEnded={onEnded} onError={onError} />
+  return { speaking, speak, stop, bindAudio, onEnded, onError };
 }
 
 /* ── RenderedMarkdown ── */
@@ -155,7 +134,7 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const { speaking, speak, stop } = useSpeech();
+  const { speaking, speak, stop, bindAudio, onEnded, onError } = useSpeech();
 
   // Reset when switching documents
   useEffect(() => {
@@ -203,6 +182,8 @@ export default function DocumentViewer({ document, onSave, onClose }: DocumentVi
 
   return (
     <div className="flex h-full flex-col">
+      {/* Hidden audio element for TTS playback — must be in DOM for autoplay */}
+      <audio ref={bindAudio} onEnded={onEnded} onError={onError} className="hidden" />
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 min-w-0">
