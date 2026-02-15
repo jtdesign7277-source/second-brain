@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw, Send, CheckCircle } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw, Send, CheckCircle, Maximize2, X } from "lucide-react";
 import clsx from "clsx";
 
 export type PanelTarget = "x" | "email" | "market-intel" | null;
@@ -415,6 +415,41 @@ function MarketIntelFeed() {
 }
 
 /* ── Split Panel ── */
+/* ── Panel labels ── */
+function panelLabel(target: NonNullable<PanelTarget>) {
+  if (target === "x") return "@stratify_hq";
+  if (target === "market-intel") return "Market Intel";
+  return "Compose";
+}
+
+function PanelIcon({ target, className }: { target: NonNullable<PanelTarget>; className?: string }) {
+  if (target === "x")
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className || "h-3 w-3"}>
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+    );
+  if (target === "market-intel")
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className || "h-3.5 w-3.5"}>
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    );
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className || "h-3.5 w-3.5"}>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  );
+}
+
+function PanelContent({ target }: { target: NonNullable<PanelTarget> }) {
+  if (target === "x") return <XFeed />;
+  if (target === "market-intel") return <MarketIntelFeed />;
+  return <EmailCompose />;
+}
+
+/* ── Split Panel ── */
 export default function SplitPanel({
   target,
   onClose,
@@ -422,57 +457,89 @@ export default function SplitPanel({
   target: NonNullable<PanelTarget>;
   onClose: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const isX = target === "x";
-  const isEmail = target === "email";
-  const isIntel = target === "market-intel";
 
   return (
-    <div className="flex h-full w-[280px] shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
-      <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-2 py-1 text-[11px] text-zinc-400 transition hover:bg-zinc-700 hover:text-zinc-100"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Back
-        </button>
-        <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-          {isX ? (
-            <>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              @stratify_hq
-            </>
-          ) : isIntel ? (
-            <>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
-              Market Intel
-            </>
-          ) : (
-            <>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5">
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-              </svg>
-              Compose
-            </>
+    <>
+      {/* Side panel */}
+      <div className="flex h-full w-[280px] shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
+        <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-2 py-1 text-[11px] text-zinc-400 transition hover:bg-zinc-700 hover:text-zinc-100"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Back
+          </button>
+          <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
+            <PanelIcon target={target} />
+            {panelLabel(target)}
+          </div>
+
+          {/* Expand to modal button */}
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="ml-auto group relative flex items-center justify-center rounded-md p-1.5 text-zinc-600 transition hover:bg-zinc-800 hover:text-zinc-300"
+            title="Expand to full view"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+            {/* Subtle pulse dot */}
+            <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+
+          {isX && (
+            <a href="https://x.com/stratify_hq" target="_blank" rel="noopener noreferrer"
+              className="text-[10px] text-zinc-600 transition hover:text-zinc-400">
+              ↗
+            </a>
           )}
         </div>
-        {isX && (
-          <a href="https://x.com/stratify_hq" target="_blank" rel="noopener noreferrer"
-            className="ml-auto text-[10px] text-zinc-600 transition hover:text-zinc-400">
-            ↗
-          </a>
-        )}
+
+        <div className="flex-1 min-h-0">
+          <PanelContent target={target} />
+        </div>
       </div>
 
-      <div className="flex-1 min-h-0">
-        {isX ? <XFeed /> : isIntel ? <MarketIntelFeed /> : <EmailCompose />}
-      </div>
-    </div>
+      {/* Expanded modal overlay */}
+      {expanded && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setExpanded(false)}
+        >
+          <div
+            className="relative mx-4 flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-zinc-700/50 bg-zinc-900/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <PanelIcon target={target} className="h-5 w-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white">{panelLabel(target)}</h2>
+                  <p className="text-xs text-zinc-500">Expanded view</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal content */}
+            <div className="flex-1 overflow-y-auto" style={{ height: "70vh" }}>
+              <PanelContent target={target} />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
