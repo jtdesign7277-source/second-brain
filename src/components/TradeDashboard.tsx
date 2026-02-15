@@ -8,9 +8,9 @@ import {
   Activity,
   RefreshCw,
   DollarSign,
-  BarChart3,
   Clock,
   Zap,
+  Pause,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -54,20 +54,9 @@ type PaperBalance = {
   lastUpdated: string;
 };
 
-type SnapshotData = {
-  symbol: string;
-  price: number;
-  change: number;
-  changePercent: number;
-};
-
-const ALPACA_KEY = "AKPSBE4WMXGR7MGGVCSUHG4UGM";
-const ALPACA_SECRET = "HNVf28Fdb5dhBmyM5hL9msUutdFtHLPbJzi4h3NwNbcq";
-
 export default function TradeDashboard() {
   const [strategies, setStrategies] = useState<ActiveStrategy[]>([]);
   const [balance, setBalance] = useState<PaperBalance | null>(null);
-  const [snapshots, setSnapshots] = useState<Record<string, SnapshotData>>({});
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
 
@@ -84,39 +73,6 @@ export default function TradeDashboard() {
         const data = await res.json();
         setStrategies(data.strategies ?? []);
         setBalance(data.balance ?? null);
-
-        // Fetch live prices for all strategy symbols
-        const symbols = [
-          ...new Set((data.strategies ?? []).map((s: ActiveStrategy) => s.symbol)),
-        ] as string[];
-
-        for (const sym of symbols) {
-          try {
-            // Use crypto endpoint for crypto symbols
-            const isCrypto = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "AVAX", "DOT", "MATIC", "LINK", "UNI", "AAVE"].includes(sym.replace("USD", "").replace("/", ""));
-            const url = isCrypto
-              ? `https://data.alpaca.markets/v1beta3/crypto/us/snapshots/${sym}USD`
-              : `https://data.alpaca.markets/v2/stocks/${sym}/snapshot`;
-
-            const snapRes = await fetch(url, {
-              headers: {
-                "APCA-API-KEY-ID": ALPACA_KEY,
-                "APCA-API-SECRET-KEY": ALPACA_SECRET,
-              },
-            });
-            if (snapRes.ok) {
-              const snap = await snapRes.json();
-              const price = snap?.latestTrade?.p ?? snap?.minuteBar?.c ?? 0;
-              const prevClose = snap?.prevDailyBar?.c ?? price;
-              const change = price - prevClose;
-              const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
-              setSnapshots((prev) => ({
-                ...prev,
-                [sym]: { symbol: sym, price, change, changePercent },
-              }));
-            }
-          } catch {}
-        }
       }
     } catch {}
     setLoading(false);
@@ -124,240 +80,177 @@ export default function TradeDashboard() {
 
   useEffect(() => {
     fetchData();
-    const id = setInterval(fetchData, 60000); // refresh every minute
+    const id = setInterval(fetchData, 60000);
     return () => clearInterval(id);
   }, [fetchData]);
 
+  // Listen for strategy activations
+  useEffect(() => {
+    const handler = () => { fetchData(); };
+    window.addEventListener("strategy-activated", handler);
+    return () => window.removeEventListener("strategy-activated", handler);
+  }, [fetchData]);
+
   const activeStrategies = strategies.filter(
-    (s) => s.status === "active" || s.status === "executing"
+    (s) => s.status === "active" || s.status === "executing" || s.status === "paused"
   );
   const allTrades = strategies.flatMap((s) => s.trades ?? []);
   const recentTrades = [...allTrades]
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 10);
 
-  const totalEquity = balance
-    ? balance.cash +
-      balance.positions.reduce((sum, p) => sum + p.currentValue, 0)
-    : 200000;
-  const totalPnl = balance ? totalEquity - balance.startingBalance : 0;
-  const totalPnlPercent = balance
-    ? (totalPnl / balance.startingBalance) * 100
-    : 0;
-
-  const formattedTime = now.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-    timeZone: "America/New_York",
-  });
+  const cash = balance?.cash ?? 200000;
+  const positionsValue = balance?.positions.reduce((s, p) => s + p.currentValue, 0) ?? 0;
+  const totalEquity = cash + positionsValue;
+  const startBal = balance?.startingBalance ?? 200000;
+  const totalPnl = totalEquity - startBal;
+  const totalPnlPct = (totalPnl / startBal) * 100;
 
   const isMarketOpen = (() => {
-    const et = new Date(
-      now.toLocaleString("en-US", { timeZone: "America/New_York" })
-    );
+    const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
     const day = et.getDay();
     const h = et.getHours();
     const m = et.getMinutes();
     const mins = h * 60 + m;
-    return day >= 1 && day <= 5 && mins >= 570 && mins < 960; // 9:30-16:00
+    return day >= 1 && day <= 5 && mins >= 570 && mins < 960;
   })();
 
+  const timeStr = now.toLocaleTimeString("en-US", {
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: true, timeZone: "America/New_York",
+  });
+
+  const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      {/* Top bar */}
-      <div className="flex items-center justify-between border-b border-zinc-800/50 px-4 py-2">
-        <div className="flex items-center gap-2">
-          <span
-            className={clsx(
-              "h-2 w-2 rounded-full",
-              isMarketOpen ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"
-            )}
-          />
-          <span className="text-xs font-medium text-zinc-300">
-            {isMarketOpen ? "Market Open" : "Market Closed"}
-          </span>
-          <span className="text-xs font-mono text-zinc-500">{formattedTime} ET</span>
+    <div className="flex h-full flex-col overflow-y-auto no-panel-scale">
+      {/* Status bar */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/50">
+        <div className="flex items-center gap-1.5">
+          <span className={clsx("h-1.5 w-1.5 rounded-full shrink-0", isMarketOpen ? "bg-emerald-400 animate-pulse" : "bg-zinc-600")} />
+          <span className="text-[11px] text-zinc-300">{isMarketOpen ? "Open" : "Closed"}</span>
+          <span className="text-[11px] font-mono text-zinc-500">{timeStr}</span>
         </div>
-        <button
-          type="button"
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-1 text-xs text-zinc-600 transition hover:text-zinc-300"
-        >
-          <RefreshCw className={clsx("h-3 w-3", loading && "animate-spin")} />
-          Refresh
+        <button type="button" onClick={fetchData} disabled={loading}
+          className="text-[11px] text-zinc-600 hover:text-zinc-300 transition">
+          <RefreshCw className={clsx("h-3 w-3 inline", loading && "animate-spin")} />
         </button>
       </div>
 
-      {/* Balance cards */}
-      <div className="grid grid-cols-4 gap-2 px-4 py-3">
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <Wallet className="h-3 w-3" />
-            Total Equity
+      {/* Balance section */}
+      <div className="px-3 py-2 border-b border-zinc-800/50 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <Wallet className="h-3 w-3 text-zinc-500" />
+            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Equity</span>
           </div>
-          <div className="text-lg font-bold text-white mt-0.5">
-            ${totalEquity.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-          </div>
+          <span className="text-[13px] font-bold text-white">${fmt(totalEquity)}</span>
         </div>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <DollarSign className="h-3 w-3" />
-            Cash
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <DollarSign className="h-3 w-3 text-zinc-500" />
+            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Cash</span>
           </div>
-          <div className="text-lg font-bold text-white mt-0.5">
-            ${(balance?.cash ?? 200000).toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-            })}
-          </div>
+          <span className="text-[13px] text-zinc-200">${fmt(cash)}</span>
         </div>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            {totalPnl >= 0 ? (
-              <TrendingUp className="h-3 w-3 text-emerald-400" />
-            ) : (
-              <TrendingDown className="h-3 w-3 text-red-400" />
-            )}
-            Total P&L
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {totalPnl >= 0 ? <TrendingUp className="h-3 w-3 text-emerald-400" /> : <TrendingDown className="h-3 w-3 text-red-400" />}
+            <span className="text-[10px] uppercase tracking-wide text-zinc-500">P&L</span>
           </div>
-          <div
-            className={clsx(
-              "text-lg font-bold mt-0.5",
-              totalPnl >= 0 ? "text-emerald-400" : "text-red-400"
-            )}
-          >
-            {totalPnl >= 0 ? "+" : ""}${totalPnl.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-            })}{" "}
-            <span className="text-xs">
-              ({totalPnlPercent >= 0 ? "+" : ""}
-              {totalPnlPercent.toFixed(2)}%)
-            </span>
-          </div>
+          <span className={clsx("text-[13px] font-bold", totalPnl >= 0 ? "text-emerald-400" : "text-red-400")}>
+            {totalPnl >= 0 ? "+" : ""}${fmt(totalPnl)}
+            <span className="text-[10px] ml-1">({totalPnlPct >= 0 ? "+" : ""}{totalPnlPct.toFixed(2)}%)</span>
+          </span>
         </div>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <Zap className="h-3 w-3" />
-            Active Strategies
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <Zap className="h-3 w-3 text-zinc-500" />
+            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Strategies</span>
           </div>
-          <div className="text-lg font-bold text-white mt-0.5">
-            {activeStrategies.length}
-          </div>
+          <span className="text-[13px] font-bold text-white">{activeStrategies.length}</span>
         </div>
       </div>
 
       {/* Active strategies */}
-      <div className="px-4 py-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-          Active Strategies
-        </h3>
+      <div className="px-3 py-2">
+        <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-400 mb-1.5">Active Strategies</div>
         {activeStrategies.length === 0 ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 px-4 py-6 text-center">
-            <Activity className="h-6 w-6 text-zinc-600 mx-auto mb-2" />
-            <p className="text-xs text-zinc-500">
-              No active strategies — activate one from the Strategies sidebar
-            </p>
+          <div className="border border-zinc-800 rounded-md px-3 py-4 text-center">
+            <Activity className="h-4 w-4 text-zinc-700 mx-auto mb-1" />
+            <p className="text-[11px] text-zinc-600">No active strategies</p>
+            <p className="text-[10px] text-zinc-700">Activate one from Strategies sidebar</p>
           </div>
         ) : (
           <div className="space-y-1.5">
-            {activeStrategies.map((s) => {
-              const snap = snapshots[s.symbol];
-              return (
-                <div
-                  key={s.id}
-                  className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/30 px-3 py-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <div>
-                      <div className="text-sm font-medium text-white">
-                        {s.title}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-zinc-500">
-                        <span className="font-mono text-amber-400">
-                          ${s.symbol}
-                        </span>
-                        <span>
-                          Size: ${s.positionSize.toLocaleString()}
-                        </span>
-                        <span>SL: {s.stopLossPercent}%</span>
-                        <span>TP: {s.takeProfitPercent}%</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    {snap ? (
-                      <>
-                        <div className="text-sm font-mono text-white">
-                          ${snap.price.toFixed(2)}
-                        </div>
-                        <div
-                          className={clsx(
-                            "text-xs font-mono",
-                            snap.change >= 0
-                              ? "text-emerald-400"
-                              : "text-red-400"
-                          )}
-                        >
-                          {snap.change >= 0 ? "+" : ""}
-                          {snap.change.toFixed(2)} (
-                          {snap.changePercent >= 0 ? "+" : ""}
-                          {snap.changePercent.toFixed(2)}%)
-                        </div>
-                      </>
-                    ) : (
-                      <span className="text-xs text-zinc-600">Loading...</span>
-                    )}
-                  </div>
+            {activeStrategies.map((s) => (
+              <div key={s.id} className="border border-zinc-800 rounded-md px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  {!isMarketOpen ? (
+                    <Pause className="h-3 w-3 text-amber-400 shrink-0" />
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  )}
+                  <span className="text-[12px] font-semibold text-white truncate">{s.title}</span>
                 </div>
-              );
-            })}
+                <div className="space-y-0.5">
+                  <div className="flex justify-between">
+                    <span className="text-[10px] text-zinc-500">Symbol</span>
+                    <span className="text-[11px] font-mono text-amber-400">${s.symbol}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[10px] text-zinc-500">Size</span>
+                    <span className="text-[11px] text-zinc-300">${s.positionSize.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[10px] text-zinc-500">Stop / Take</span>
+                    <span className="text-[11px]">
+                      <span className="text-red-400">{s.stopLossPercent}%</span>
+                      <span className="text-zinc-600 mx-1">/</span>
+                      <span className="text-emerald-400">{s.takeProfitPercent}%</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[10px] text-zinc-500">Status</span>
+                    <span className={clsx("text-[11px] font-medium",
+                      isMarketOpen ? "text-emerald-400" : "text-amber-400"
+                    )}>
+                      {isMarketOpen ? "Monitoring" : "Paused — Market Closed"}
+                    </span>
+                  </div>
+                  {s.activatedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-[10px] text-zinc-500">Since</span>
+                      <span className="text-[10px] text-zinc-500">
+                        {new Date(s.activatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       {/* Open positions */}
       {balance && balance.positions.length > 0 && (
-        <div className="px-4 py-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-            Open Positions
-          </h3>
+        <div className="px-3 py-2">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-400 mb-1.5">Open Positions</div>
           <div className="space-y-1">
             {balance.positions.map((pos) => {
-              const snap = snapshots[pos.symbol];
-              const currentPrice = snap?.price ?? pos.currentValue / pos.quantity;
-              const pnl =
-                (currentPrice - pos.avgEntryPrice) * pos.quantity;
-              const pnlPercent =
-                ((currentPrice - pos.avgEntryPrice) / pos.avgEntryPrice) * 100;
+              const curPrice = pos.currentValue / (pos.quantity || 1);
+              const pnl = (curPrice - pos.avgEntryPrice) * pos.quantity;
               return (
-                <div
-                  key={pos.symbol}
-                  className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/30 px-3 py-2"
-                >
+                <div key={pos.symbol} className="flex justify-between border border-zinc-800 rounded-md px-3 py-1.5">
                   <div>
-                    <span className="font-mono text-sm font-bold text-amber-400">
-                      ${pos.symbol}
-                    </span>
-                    <span className="text-xs text-zinc-500 ml-2">
-                      {pos.quantity} shares @ ${pos.avgEntryPrice.toFixed(2)}
-                    </span>
+                    <span className="text-[11px] font-mono font-bold text-amber-400">${pos.symbol}</span>
+                    <div className="text-[10px] text-zinc-500">{pos.quantity} @ ${pos.avgEntryPrice.toFixed(2)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-mono text-white">
-                      ${(currentPrice * pos.quantity).toFixed(2)}
-                    </div>
-                    <div
-                      className={clsx(
-                        "text-xs font-mono",
-                        pnl >= 0 ? "text-emerald-400" : "text-red-400"
-                      )}
-                    >
-                      {pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} (
-                      {pnlPercent >= 0 ? "+" : ""}
-                      {pnlPercent.toFixed(2)}%)
+                    <div className="text-[11px] text-white">${pos.currentValue.toFixed(2)}</div>
+                    <div className={clsx("text-[10px]", pnl >= 0 ? "text-emerald-400" : "text-red-400")}>
+                      {pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -368,50 +261,26 @@ export default function TradeDashboard() {
       )}
 
       {/* Recent trades */}
-      <div className="px-4 py-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-          Recent Trades
-        </h3>
+      <div className="px-3 py-2">
+        <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-400 mb-1.5">Recent Trades</div>
         {recentTrades.length === 0 ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 px-4 py-4 text-center">
-            <Clock className="h-5 w-5 text-zinc-600 mx-auto mb-1" />
-            <p className="text-xs text-zinc-500">
-              No trades yet — TradeBot will execute when conditions are met
-            </p>
+          <div className="border border-zinc-800 rounded-md px-3 py-3 text-center">
+            <Clock className="h-3.5 w-3.5 text-zinc-700 mx-auto mb-1" />
+            <p className="text-[11px] text-zinc-600">No trades yet</p>
+            <p className="text-[10px] text-zinc-700">TradeBot executes during market hours</p>
           </div>
         ) : (
           <div className="space-y-1">
             {recentTrades.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between rounded-md border border-zinc-800/50 bg-zinc-900/20 px-3 py-1.5"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={clsx(
-                      "text-xs font-bold px-1.5 py-0.5 rounded",
-                      t.action === "BUY"
-                        ? "text-emerald-400 bg-emerald-500/10"
-                        : "text-red-400 bg-red-500/10"
-                    )}
-                  >
-                    {t.action}
-                  </span>
-                  <span className="font-mono text-xs text-amber-400">
-                    ${t.symbol}
-                  </span>
-                  <span className="text-xs text-zinc-400">
-                    {t.quantity} @ ${t.price.toFixed(2)}
-                  </span>
+              <div key={t.id} className="flex justify-between border border-zinc-800/50 rounded-md px-2 py-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className={clsx("text-[10px] font-bold",
+                    t.action === "BUY" ? "text-emerald-400" : "text-red-400"
+                  )}>{t.action}</span>
+                  <span className="text-[10px] font-mono text-amber-400">${t.symbol}</span>
+                  <span className="text-[10px] text-zinc-500">{t.quantity}@${t.price.toFixed(2)}</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs text-zinc-500">
-                    ${t.total?.toFixed(2) ?? (t.quantity * t.price).toFixed(2)}
-                  </span>
-                  <span className="text-xs text-zinc-600 ml-2">
-                    {new Date(t.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
+                <span className="text-[10px] text-zinc-600">{new Date(t.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
               </div>
             ))}
           </div>
@@ -419,18 +288,8 @@ export default function TradeDashboard() {
       </div>
 
       {/* Footer */}
-      <div className="mt-auto border-t border-zinc-800/50 px-4 py-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-zinc-600">
-            Paper Trading · $200K Starting Balance · Alpaca Live Data
-          </span>
-          <div className="flex items-center gap-1">
-            <BarChart3 className="h-3 w-3 text-zinc-600" />
-            <span className="text-[10px] text-zinc-600">
-              TradeBot checks every 5 min during market hours
-            </span>
-          </div>
-        </div>
+      <div className="mt-auto px-3 py-1.5 border-t border-zinc-800/50">
+        <p className="text-[9px] text-zinc-700 text-center">Paper Trading · $200K Balance · Alpaca Live Data · 5min checks</p>
       </div>
     </div>
   );

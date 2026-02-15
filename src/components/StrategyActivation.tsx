@@ -261,6 +261,9 @@ export default function StrategyActivation({
     saveActiveStrategies(all);
     if (!strategy) setStrategy(newStrategy);
 
+    // Notify trade dashboard to refresh
+    window.dispatchEvent(new Event("strategy-activated"));
+
     // Log activation to Second Brain
     fetch("/api/documents", {
       method: "POST",
@@ -286,6 +289,7 @@ export default function StrategyActivation({
     saveActiveStrategies(all);
     setStrategy(null);
     setConditions(DEFAULT_CONDITIONS.map((c) => ({ ...c, checked: false })));
+    window.dispatchEvent(new Event("strategy-activated"));
   }, [documentId]);
 
   return (

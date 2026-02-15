@@ -35,13 +35,21 @@ body {
 }
 
 /* Scale up text in side panel and modal overlay */
-.panel-scaled * {
+.panel-scaled *:not(.no-panel-scale *) {
   font-size: clamp(13px, 1em, 40px) !important;
   line-height: 1.45 !important;
 }
-.panel-scaled h1, .panel-scaled h2, .panel-scaled h3 {
+.panel-scaled h1:not(.no-panel-scale *),
+.panel-scaled h2:not(.no-panel-scale *),
+.panel-scaled h3:not(.no-panel-scale *) {
   font-size: clamp(16px, 1.2em, 44px) !important;
 }
-.panel-scaled input, .panel-scaled textarea {
+.panel-scaled input:not(.no-panel-scale *),
+.panel-scaled textarea:not(.no-panel-scale *) {
   font-size: 15px !important;
+}
+/* Exclude trade dashboard from scaling */
+.no-panel-scale, .no-panel-scale * {
+  font-size: revert !important;
+  line-height: revert !important;
 }
