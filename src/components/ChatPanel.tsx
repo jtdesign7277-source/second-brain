@@ -608,7 +608,7 @@ export function ChatFull() {
 
   return (
     <div className="flex h-full">
-      <div className="flex flex-col h-full min-w-0 w-full">
+      <div className="flex flex-col h-full min-w-0 w-1/2">
         {/* Header */}
         <div className="flex items-center gap-3 pb-4 border-b border-zinc-800/50 mb-4 px-1">
           <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
