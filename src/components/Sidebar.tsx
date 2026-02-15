@@ -24,7 +24,7 @@ type FolderGroup = {
   isCron: boolean;
 };
 
-function groupByFolder(docs: DocumentItem[]): FolderGroup[] {
+function groupByFolder(docs: DocumentItem[]): { cronGroups: FolderGroup[]; strategiesGroup: FolderGroup; regularGroups: FolderGroup[] } {
   const map = new Map<string, DocumentItem[]>();
   const ungrouped: DocumentItem[] = [];
 
@@ -95,6 +95,7 @@ export default function Sidebar({
   const allGroups = useMemo(() => [strategiesGroup, ...cronGroups, ...regularGroups], [strategiesGroup, cronGroups, regularGroups]);
 
   // Auto-open folder containing selected doc
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useMemo(() => {
     if (!selectedId) return;
     for (const g of allGroups) {
