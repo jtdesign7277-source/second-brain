@@ -160,6 +160,32 @@ async function fetchHistory(symbol: string, period: string): Promise<string> {
 
 export async function POST(req: Request) {
   try {
+    // Optional API key auth — if x-api-key header present, validate and meter
+    let apiKeyId: string | null = null;
+    const externalKey = req.headers.get("x-api-key");
+    if (externalKey) {
+      try {
+        const { validateApiKey, logUsage } = await import("@/lib/apiAuth");
+        const nextReq = req as any;
+        // Quick hash check
+        const { createHash } = await import("crypto");
+        const hash = createHash("sha256").update(externalKey).digest("hex");
+        const { getSupabaseServer } = await import("@/lib/supabase/server");
+        const sb = getSupabaseServer();
+        const { data } = await sb.from("api_keys").select("id, user_id, rate_limit_per_day, active").eq("key_hash", hash).single();
+        if (!data || !data.active) {
+          return new Response(JSON.stringify({ error: "Invalid or deactivated API key" }), { status: 401, headers: { "Content-Type": "application/json" } });
+        }
+        // Rate limit check
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const { count } = await sb.from("api_usage").select("*", { count: "exact", head: true }).eq("api_key_id", data.id).gte("created_at", todayStart.toISOString());
+        if ((count ?? 0) >= data.rate_limit_per_day) {
+          return new Response(JSON.stringify({ error: `Rate limit exceeded (${data.rate_limit_per_day}/day)` }), { status: 429, headers: { "Content-Type": "application/json" } });
+        }
+        apiKeyId = data.id;
+      } catch { /* Supabase not configured — skip auth */ }
+    }
+
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return new Response("Missing ANTHROPIC_API_KEY", { status: 500 });
@@ -239,6 +265,14 @@ export async function POST(req: Request) {
         } catch { controller.close(); }
       },
     });
+
+    // Log usage if API key was used
+    if (apiKeyId) {
+      try {
+        const { logUsage } = await import("@/lib/apiAuth");
+        logUsage(apiKeyId, "/api/chat", 0, 0, 0, 200).catch(() => {});
+      } catch {}
+    }
 
     return new Response(readable, {
       headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache, no-transform" },
