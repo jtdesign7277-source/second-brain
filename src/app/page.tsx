@@ -85,12 +85,23 @@ function useGlobalTTS() {
 
   const stop = useCallback(() => {
     const el = audioRef.current;
-    if (el) { el.pause(); el.currentTime = 0; }
+    if (el) {
+      el.pause();
+      el.removeAttribute("src");
+      el.load(); // Reset the element fully
+    }
+    if (urlRef.current) { URL.revokeObjectURL(urlRef.current); urlRef.current = null; }
     window.speechSynthesis?.cancel();
     setSpeaking(false);
   }, []);
 
-  const onEnded = useCallback(() => setSpeaking(false), []);
+  const onEnded = useCallback(() => {
+    // Clean up src so it doesn't replay on page revisit
+    const el = audioRef.current;
+    if (el) { el.removeAttribute("src"); el.load(); }
+    if (urlRef.current) { URL.revokeObjectURL(urlRef.current); urlRef.current = null; }
+    setSpeaking(false);
+  }, []);
   const onError = useCallback(() => setSpeaking(false), []);
 
   return { speaking, speak, stop, bindAudio, onEnded, onError };
@@ -122,7 +133,7 @@ export default function Home() {
   return (
     <div className="flex h-screen w-full bg-zinc-950 text-zinc-100">
       {/* Global audio element — persists across all doc switches */}
-      <audio ref={tts.bindAudio} onEnded={tts.onEnded} onError={tts.onError} className="hidden" />
+      <audio ref={tts.bindAudio} onEnded={tts.onEnded} onError={tts.onError} preload="none" className="hidden" />
       <Sidebar
         documents={documents}
         selectedId={selected?.id ?? null}
