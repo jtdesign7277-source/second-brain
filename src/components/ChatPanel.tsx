@@ -1,9 +1,103 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Send } from "lucide-react";
+import { Send, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useChat } from "@/hooks/useChat";
+
+/* ── Copy button for code blocks ── */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+      className="absolute top-2 right-2 p-1 rounded bg-zinc-700/80 hover:bg-zinc-600 transition opacity-0 group-hover:opacity-100"
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
+    </button>
+  );
+}
+
+/* ── Collapsible section ── */
+function CollapsibleSection({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="my-2">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1 text-zinc-400 hover:text-zinc-200 transition text-xs font-mono uppercase tracking-wide">
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {title}
+      </button>
+      {open && <div className="mt-1">{children}</div>}
+    </div>
+  );
+}
+
+/* ── Markdown renderer for chat messages ── */
+function ChatMarkdown({ content, size }: { content: string; size: "full" | "compact" }) {
+  const textClass = size === "full" ? "text-sm" : "text-[13px]";
+  
+  return (
+    <div className={clsx("chat-markdown", textClass)}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => <div className="text-base font-bold text-indigo-400 mt-3 mb-1.5 border-b border-zinc-700/50 pb-1">{children}</div>,
+          h2: ({ children }) => <div className="text-sm font-bold text-violet-400 mt-3 mb-1">{children}</div>,
+          h3: ({ children }) => <div className="text-sm font-semibold text-sky-400 mt-2 mb-0.5">{children}</div>,
+          h4: ({ children }) => <div className="text-xs font-semibold text-amber-400 mt-1.5 mb-0.5">{children}</div>,
+          p: ({ children }) => <p className="mb-1.5 leading-relaxed">{children}</p>,
+          strong: ({ children }) => <strong className="text-zinc-50 font-semibold">{children}</strong>,
+          em: ({ children }) => <em className="text-zinc-300 italic">{children}</em>,
+          ul: ({ children }) => <ul className="mb-1.5 ml-3 space-y-0.5">{children}</ul>,
+          ol: ({ children }) => <ol className="mb-1.5 ml-3 space-y-0.5 list-decimal">{children}</ol>,
+          li: ({ children }) => <li className="flex gap-1.5 before:content-['▸'] before:text-indigo-500 before:shrink-0">{children}</li>,
+          hr: () => <hr className="border-zinc-700/50 my-2" />,
+          blockquote: ({ children }) => <blockquote className="border-l-2 border-indigo-500/50 pl-3 my-1.5 text-zinc-400 italic">{children}</blockquote>,
+          a: ({ href, children }) => <a href={href} target="_blank" rel="noopener" className="text-sky-400 hover:text-sky-300 underline underline-offset-2">{children}</a>,
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-2 rounded border border-zinc-700/50">
+              <table className="min-w-full text-xs">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="bg-zinc-800/80 text-zinc-300">{children}</thead>,
+          th: ({ children }) => <th className="px-2 py-1 text-left font-medium border-b border-zinc-700/50">{children}</th>,
+          td: ({ children }) => <td className="px-2 py-1 border-b border-zinc-800/50">{children}</td>,
+          code: ({ className, children, ...props }) => {
+            const isBlock = className?.includes("language-");
+            const lang = className?.replace("language-", "") || "";
+            const codeText = String(children).replace(/\n$/, "");
+            
+            if (isBlock || codeText.includes("\n")) {
+              return (
+                <div className="group relative my-2 rounded-lg bg-[#1a1a2e] border border-zinc-700/40 overflow-hidden">
+                  {lang && (
+                    <div className="flex items-center justify-between px-3 py-1 bg-zinc-800/60 border-b border-zinc-700/40">
+                      <span className="text-[10px] font-mono text-zinc-500 uppercase">{lang}</span>
+                    </div>
+                  )}
+                  <pre className="p-3 overflow-x-auto text-xs leading-relaxed">
+                    <code className="text-emerald-300 font-mono">{codeText}</code>
+                  </pre>
+                  <CopyButton text={codeText} />
+                </div>
+              );
+            }
+            
+            return (
+              <code className="px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300 font-mono text-[0.85em]" {...props}>
+                {children}
+              </code>
+            );
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 /* ── Shared message list ── */
 function MessageList({
@@ -20,8 +114,6 @@ function MessageList({
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const bubbleText = size === "full" ? "text-sm" : "text-[13px]";
 
   return (
     <>
@@ -48,13 +140,14 @@ function MessageList({
           <div
             className={clsx(
               "rounded-2xl px-4 py-2.5 leading-relaxed",
-              bubbleText,
               msg.role === "user"
-                ? "bg-indigo-600 text-white rounded-br-sm max-w-[75%]"
+                ? "bg-indigo-600 text-white rounded-br-sm max-w-[75%] text-sm"
                 : "bg-zinc-800/80 text-zinc-100 rounded-bl-sm max-w-[85%]"
             )}
           >
-            {msg.content || (streaming && i === messages.length - 1 ? (
+            {msg.content ? (
+              msg.role === "user" ? msg.content : <ChatMarkdown content={msg.content} size={size} />
+            ) : (streaming && i === messages.length - 1 ? (
               <span className="inline-flex gap-1">
                 <span className="animate-pulse">●</span>
                 <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>●</span>
