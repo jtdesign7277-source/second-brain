@@ -6,6 +6,7 @@ import { Send, ChevronDown, ChevronRight, Copy, Check, Bookmark } from "lucide-r
 import { STRATEGIES_FOLDER } from "@/lib/cronFolders";
 import BacktestBuilder from "./BacktestBuilder";
 import MarketIntelFeed from "./MarketIntelFeed";
+import PreTradeChecklist, { extractChecklist, InlineChecklistTag, CHECKLIST_KEYS, type ChecklistItem } from "./PreTradeChecklist";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChat } from "@/hooks/useChat";
@@ -99,6 +100,24 @@ function ChatMarkdown({ content, size }: { content: string; size: "full" | "comp
           },
           strong: ({ children }) => {
             const text = String(children);
+            // Detect checklist-related lines and add green glow
+            const checklistMatch = CHECKLIST_KEYS.find((k) =>
+              k.patterns.some((p) => p.test(text)) ||
+              text.toLowerCase().includes(k.label.toLowerCase())
+            );
+            if (checklistMatch) {
+              return (
+                <strong
+                  className="font-bold"
+                  style={{
+                    color: "#4ade80",
+                    textShadow: "0 0 8px rgba(74, 222, 128, 0.3), 0 0 2px rgba(74, 222, 128, 0.15)",
+                  }}
+                >
+                  {children}
+                </strong>
+              );
+            }
             if (/\+|gain|profit|bull|buy|entry|winner|best/i.test(text)) return <strong className="text-emerald-400 font-bold">{children}</strong>;
             if (/-|loss|risk|stop|sell|bear|worst|avoid/i.test(text)) return <strong className="text-rose-400 font-bold">{children}</strong>;
             if (/\$[\d,]+/.test(text)) return <strong className="text-amber-300 font-bold">{children}</strong>;
@@ -109,6 +128,23 @@ function ChatMarkdown({ content, size }: { content: string; size: "full" | "comp
           ol: ({ children }) => <ol className="mb-1.5 ml-3 space-y-0.5 list-decimal">{children}</ol>,
           li: ({ children }) => {
             const text = String(children);
+            const isChecklistLine = CHECKLIST_KEYS.some((k) =>
+              k.patterns.some((p) => p.test(text)) ||
+              text.toLowerCase().includes(k.label.toLowerCase())
+            );
+            if (isChecklistLine) {
+              return (
+                <li
+                  className="flex gap-1.5 before:content-['✓'] before:shrink-0"
+                  style={{
+                    color: "#4ade80",
+                    textShadow: "0 0 6px rgba(74, 222, 128, 0.25)",
+                  }}
+                >
+                  <span>{children}</span>
+                </li>
+              );
+            }
             const bullet = /\+|gain|profit|green|bull/i.test(text) ? "text-emerald-500" : /-|loss|red|bear|risk/i.test(text) ? "text-rose-500" : "text-indigo-500";
             return <li className={`flex gap-1.5 before:content-['▸'] before:${bullet} before:shrink-0`}><span>{children}</span></li>;
           },
@@ -566,14 +602,33 @@ function RotatingExamples({ onSelect }: { onSelect: (prompt: string) => void }) 
 }
 
 /* ── Full-size chat (main content area) ── */
+// Detect if content looks like a strategy response
+function isStrategyContent(content: string): boolean {
+  const keywords = ["entry", "stop.?loss", "position.?siz", "risk.?reward", "take.?profit", "trend", "volume"];
+  let hits = 0;
+  for (const kw of keywords) {
+    if (new RegExp(kw, "i").test(content)) hits++;
+  }
+  return hits >= 3; // at least 3 of 7 keywords = strategy
+}
+
 export function ChatFull() {
   const { messages, input, setInput, sendMessage, streaming } = useChat();
   const [saved, setSaved] = useState(false);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
 
   // Scan ALL assistant messages for code — show the latest one
   const allContent = messages.filter(m => m.role === "assistant" && m.content).map(m => m.content);
   const lastContent = allContent[allContent.length - 1] || "";
+
+  // Extract checklist from latest strategy response
+  const isStrategy = isStrategyContent(lastContent);
+  useEffect(() => {
+    if (isStrategy && lastContent) {
+      setChecklistItems(extractChecklist(lastContent));
+    }
+  }, [lastContent, isStrategy]);
   
   // Detect code block (complete or still streaming)
   let codePanel: { code: string; lang: string } | null = null;
@@ -638,6 +693,19 @@ export function ChatFull() {
           <BacktestBuilder
             onSubmit={(prompt) => setInput(prompt)}
             onClose={() => setShowBuilder(false)}
+          />
+        )}
+
+        {/* Pre-Trade Checklist (shows when Fred generates a strategy) */}
+        {isStrategy && checklistItems.length > 0 && !streaming && (
+          <PreTradeChecklist
+            items={checklistItems}
+            onUpdate={setChecklistItems}
+            onSave={(items) => {
+              // Store checklist values in localStorage for StrategyActivation to read
+              localStorage.setItem("second-brain-pretrade-checklist", JSON.stringify(items));
+              window.dispatchEvent(new Event("storage"));
+            }}
           />
         )}
 
