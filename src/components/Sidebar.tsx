@@ -103,6 +103,24 @@ function groupByFolder(docs: DocumentItem[]): { cronGroups: FolderGroup[]; strat
   return { cronGroups, strategiesGroup, xPostsGroups, regularGroups };
 }
 
+const MONTHS: Record<string, string> = { Jan:"1",Feb:"2",Mar:"3",Apr:"4",May:"5",Jun:"6",Jul:"7",Aug:"8",Sep:"9",Oct:"10",Nov:"11",Dec:"12" };
+
+/** Normalize any date in a title to M/D/YY format */
+function shortDate(title: string): string {
+  return title
+    // "2026-02-15"
+    .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (_,y,m,d) => `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}`)
+    // "Feb 15, 2026" or "Feb 15 2026"
+    .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s+(\d{4})\b/g,
+      (_,mon,d,y) => `${MONTHS[mon]}/${parseInt(d)}/${y.slice(2)}`)
+    // "Sun Feb 15 2026"
+    .replace(/\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})\b/g,
+      (_,mon,d,y) => `${MONTHS[mon]}/${parseInt(d)}/${y.slice(2)}`)
+    // "Sun Feb 15" (no year, truncated)
+    .replace(/\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\b/g,
+      (_,mon,d) => `${MONTHS[mon]}/${parseInt(d)}`);
+}
+
 export default function Sidebar({
   documents,
   selectedId,
@@ -234,7 +252,7 @@ export default function Sidebar({
                         )}
                       >
                         <button type="button" onClick={() => onSelect(doc)} className="flex-1 truncate text-left">
-                          {doc.title || "Untitled"}
+                          {shortDate(doc.title) || "Untitled"}
                         </button>
                         <button type="button" onClick={() => onDelete(doc.id)} className="ml-2 hidden rounded p-1 text-zinc-500 transition hover:text-zinc-200 group-hover:block" title="Delete">
                           <Trash2 className="h-3.5 w-3.5" />
@@ -316,7 +334,7 @@ export default function Sidebar({
                           onClick={() => onSelect(doc)}
                           className="flex-1 truncate text-left"
                         >
-                          {doc.title || "Untitled"}
+                          {shortDate(doc.title) || "Untitled"}
                         </button>
                         <button
                           type="button"
@@ -377,7 +395,7 @@ export default function Sidebar({
                       )}
                     >
                       <button type="button" onClick={() => onSelect(doc)} className="flex-1 truncate text-left">
-                        {doc.title || "Untitled"}
+                        {shortDate(doc.title) || "Untitled"}
                       </button>
                       <button type="button" onClick={() => onDelete(doc.id)} className="ml-2 hidden rounded p-1 text-zinc-500 transition hover:text-zinc-200 group-hover:block" title="Delete">
                         <Trash2 className="h-3.5 w-3.5" />
@@ -443,7 +461,7 @@ export default function Sidebar({
                         onClick={() => onSelect(doc)}
                         className="flex-1 truncate text-left"
                       >
-                        {doc.title || "Untitled"}
+                        {shortDate(doc.title) || "Untitled"}
                       </button>
                       <button
                         type="button"
