@@ -9,26 +9,55 @@ export type ChecklistItem = {
   label: string;
   value: string; // extracted value from Fred's response
   checked: boolean;
+  userEditable?: boolean; // true = user fills this in (e.g. $ Allocation)
 };
 
 export const CHECKLIST_KEYS = [
-  { id: "entry-signal", label: "Entry Signal", patterns: [/entry\s*(signal|condition|trigger|point)[:\s]*([^\n.]+)/i, /(?:buy|long|short)\s+(?:when|at|if)[:\s]*([^\n.]+)/i] },
-  { id: "volume-check", label: "Volume", patterns: [/volume[:\s]*([^\n.]+)/i, /avg\.?\s*volume[:\s]*([^\n.]+)/i] },
-  { id: "trend-alignment", label: "Trend", patterns: [/trend[:\s]*([^\n.]+)/i, /(?:bullish|bearish|uptrend|downtrend)[:\s]*([^\n.]+)/i] },
-  { id: "risk-reward", label: "Risk/Reward", patterns: [/risk[\/\s]reward[:\s]*([^\n.]+)/i, /r[\/:]r[:\s]*([^\n.]+)/i, /reward[:\s]*([^\n.]+)/i] },
-  { id: "stop-loss-set", label: "Stop Loss", patterns: [/stop[\s-]*loss[:\s]*([^\n.]+)/i, /stop[:\s]*\$?([\d,.]+)/i] },
-  { id: "position-sized", label: "Position Size", patterns: [/position\s*siz[ei][:\s]*([^\n.]+)/i, /(?:shares|qty|quantity)[:\s]*([^\n.]+)/i, /allocation[:\s]*([^\n.]+)/i] },
+  { id: "entry-signal", label: "Entry Signal", userEditable: false, patterns: [
+    /\*\*Entry Signal:\*\*\s*(.+)/i,
+    /entry\s*signal[:\s]*["""]?([^"\n]+)/i,
+    /entry\s*(signal|condition|trigger|point)[:\s]*([^\n.]+)/i,
+  ]},
+  { id: "volume-check", label: "Volume", userEditable: false, patterns: [
+    /\*\*Volume:\*\*\s*(.+)/i,
+    /volume[:\s]*["""]?([^"\n]+)/i,
+  ]},
+  { id: "trend-alignment", label: "Trend", userEditable: false, patterns: [
+    /\*\*Trend:\*\*\s*(.+)/i,
+    /trend[:\s]*["""]?([^"\n]+)/i,
+  ]},
+  { id: "risk-reward", label: "Risk/Reward", userEditable: false, patterns: [
+    /\*\*Risk\/Reward:\*\*\s*(.+)/i,
+    /risk[\/\s]*reward[:\s]*["""]?([^"\n]+)/i,
+  ]},
+  { id: "stop-loss-set", label: "Stop Loss", userEditable: false, patterns: [
+    /\*\*Stop Loss:\*\*\s*(.+)/i,
+    /stop[\s-]*loss[:\s]*["""]?([^"\n]+)/i,
+  ]},
+  { id: "position-sized", label: "$ Allocation", userEditable: true, patterns: [] },
 ];
 
 /* ── Extract checklist values from markdown content ── */
 export function extractChecklist(content: string): ChecklistItem[] {
   return CHECKLIST_KEYS.map((key) => {
+    // User-editable fields start blank for the user to fill in
+    if (key.userEditable) {
+      return {
+        id: key.id,
+        label: key.label,
+        value: "",
+        checked: false,
+        userEditable: true,
+      };
+    }
     let value = "";
     for (const pattern of key.patterns) {
       const match = content.match(pattern);
       if (match) {
-        // Use the last capture group (some patterns have 2 groups)
-        value = (match[match.length - 1] || match[1] || "").trim().slice(0, 80);
+        // Use the last capture group
+        value = (match[match.length - 1] || match[1] || "").trim()
+          .replace(/\*+/g, "").trim() // strip leftover markdown bold
+          .slice(0, 100);
         break;
       }
     }
@@ -192,7 +221,27 @@ export default function PreTradeChecklist({
                 >
                   {item.label}
                 </div>
-                {isEditing ? (
+                {item.userEditable ? (
+                  /* Always-editable field ($ Allocation) */
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[11px] text-amber-400">$</span>
+                    <input
+                      value={item.value}
+                      onChange={(e) => {
+                        const updated = items.map((i) =>
+                          i.id === item.id ? { ...i, value: e.target.value } : i
+                        );
+                        onUpdate(updated);
+                      }}
+                      placeholder="Enter amount..."
+                      className="flex-1 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none"
+                      style={{
+                        background: "rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(251, 191, 36, 0.3)",
+                      }}
+                    />
+                  </div>
+                ) : isEditing ? (
                   <div className="flex items-center gap-1 mt-0.5">
                     <input
                       autoFocus
@@ -234,7 +283,7 @@ export default function PreTradeChecklist({
                     </span>
                     <button
                       onClick={(e) => { e.stopPropagation(); startEdit(item.id, item.value); }}
-                      className="shrink-0 opacity-0 group-hover:opacity-100 hover:!opacity-100 text-zinc-600 hover:text-zinc-300 transition"
+                      className="shrink-0 text-zinc-600 hover:text-zinc-300 transition"
                       style={{ opacity: 0.3 }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.3"; }}

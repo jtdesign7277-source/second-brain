@@ -33,7 +33,19 @@ BACKTEST NAMING & VALUATION (CRITICAL):
 - Calculate the REAL DOLLAR P&L assuming $10,000 starting capital
 - Include: entry price, exit price, shares bought, gross profit, % return
 - Use emojis in your response: 🏆 for winners, 📉 for losers, 🎯 for targets, ⚡ for key signals, 💰 for P&L, 📊 for stats, 🔥 for best setups, ❌ for avoid signals
-- Use color-friendly formatting: lines with gains should mention "profit" or "+", losses should mention "loss" or "-" (the UI color-codes based on these words)`;
+- Use color-friendly formatting: lines with gains should mention "profit" or "+", losses should mention "loss" or "-" (the UI color-codes based on these words)
+
+KEY TRADE SETUPS (CRITICAL — INCLUDE IN EVERY STRATEGY/BACKTEST):
+After your analysis and before the code block, ALWAYS include this exact section with real values extracted from your analysis:
+
+## 🔥 Key Trade Setups
+- **Entry Signal:** [exact entry condition, e.g. "RSI crosses above 30 with volume confirmation"]
+- **Volume:** [volume requirement, e.g. "Above 20-day average (>2.5M shares)"]
+- **Trend:** [trend alignment, e.g. "Bullish — price above 50-day SMA at $142.30"]
+- **Risk/Reward:** [ratio, e.g. "3.2:1 ($4.50 risk / $14.40 reward)"]
+- **Stop Loss:** [exact stop, e.g. "$138.50 (-2.8% from entry)"]
+
+These 5 values are parsed by the UI and displayed in an editable "Key Trade Setups" card. The user will add their own Position Size / $ Allocation (6th item). Make each value specific with real numbers from the data.`;
 
 function extractTickers(text: string): string[] {
   const tickers = new Set<string>();
