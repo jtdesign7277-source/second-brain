@@ -482,8 +482,10 @@ const BACKTEST_EXAMPLES = [
 function RotatingExamples({ onSelect }: { onSelect: (prompt: string) => void }) {
   const [idx, setIdx] = useState(0);
   const [fade, setFade] = useState(true);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (open) return; // pause rotation when dropdown is open
     const timer = setInterval(() => {
       setFade(false);
       setTimeout(() => {
@@ -492,28 +494,44 @@ function RotatingExamples({ onSelect }: { onSelect: (prompt: string) => void }) 
       }, 300);
     }, 10000);
     return () => clearInterval(timer);
-  }, []);
+  }, [open]);
 
   const ex = BACKTEST_EXAMPLES[idx];
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(ex.prompt)}
-      className={clsx(
-        "ml-4 flex items-center gap-2 rounded-lg border border-zinc-800/60 bg-zinc-900/40 px-3 py-1.5 transition-all duration-300 hover:border-indigo-500/40 hover:bg-indigo-500/5 group cursor-pointer",
-        fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+    <div className="relative ml-4">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={clsx(
+          "flex items-center gap-2 rounded-lg border border-zinc-800/60 bg-zinc-900/40 px-3 py-1.5 transition-all duration-300 hover:border-indigo-500/40 hover:bg-indigo-500/5 group cursor-pointer",
+          fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+        )}
+      >
+        <span className="text-[10px] text-indigo-400 font-medium whitespace-nowrap">▶ Try:</span>
+        <span className="text-[11px] text-zinc-300 group-hover:text-indigo-300 transition whitespace-nowrap">{ex.label}</span>
+        <ChevronDown className={clsx("h-3 w-3 text-zinc-500 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1.5 z-50 w-72 rounded-xl border border-zinc-700/60 bg-zinc-900 shadow-2xl shadow-black/50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          {BACKTEST_EXAMPLES.map((example, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => { onSelect(example.prompt); setOpen(false); }}
+              className="w-full text-left px-4 py-3 transition hover:bg-indigo-500/10 border-b border-zinc-800/50 last:border-0 group"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-indigo-400 text-xs">▶</span>
+                <span className="text-[12px] font-semibold text-zinc-200 group-hover:text-indigo-300 transition">{example.label}</span>
+              </div>
+              <p className="text-[10px] text-zinc-500 leading-relaxed line-clamp-2 ml-5">{example.prompt.split("\n").slice(2, 4).join(" · ")}</p>
+            </button>
+          ))}
+        </div>
       )}
-    >
-      <span className="text-[10px] text-indigo-400 font-medium whitespace-nowrap">▶ Try:</span>
-      <span className="text-[11px] text-zinc-300 group-hover:text-indigo-300 transition whitespace-nowrap">{ex.label}</span>
-      {/* Progress dots */}
-      <span className="flex items-center gap-1 ml-2">
-        {BACKTEST_EXAMPLES.map((_, i) => (
-          <span key={i} className={clsx("h-1 w-1 rounded-full transition-all", i === idx ? "bg-indigo-400 w-2" : "bg-zinc-700")} />
-        ))}
-      </span>
-    </button>
+    </div>
   );
 }
 
