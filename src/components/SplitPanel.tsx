@@ -533,9 +533,11 @@ export default function SplitPanel({
               </button>
             </div>
 
-            {/* Modal content */}
-            <div className="flex-1 overflow-y-auto" style={{ height: "70vh" }}>
-              <PanelContent target={target} />
+            {/* Modal content — doubled text size for readability */}
+            <div className="flex-1 overflow-y-auto modal-expanded" style={{ height: "70vh", fontSize: "200%" }}>
+              <div className="px-6 py-4">
+                <PanelContent target={target} />
+              </div>
             </div>
           </div>
         </div>
