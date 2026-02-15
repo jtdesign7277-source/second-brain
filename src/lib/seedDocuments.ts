@@ -3,6 +3,101 @@ import type { DocumentItem } from "@/types/documents";
 const STORAGE_KEY = "second-brain-documents";
 const SEED_KEY = "second-brain-seeded";
 
+const strategyDocs: Omit<DocumentItem, "id">[] = [
+  {
+    user_id: "local",
+    title: "🔥 NVDA Momentum Breakout",
+    folder: "strategies",
+    created_at: "2026-02-15T10:00:00.000Z",
+    updated_at: "2026-02-15T10:00:00.000Z",
+    content: `# NVDA Momentum Breakout Strategy
+
+## Overview
+Buy NVDA on momentum breakouts above key resistance levels with volume confirmation.
+
+## Entry Rules
+- Price breaks above 20-day high with volume > 1.5x 20-day average
+- RSI(14) between 55-75 (strong but not overbought)
+- MACD histogram positive and increasing
+
+## Exit Rules
+- **Stop Loss:** 2% below entry
+- **Take Profit:** 4% above entry (2:1 R/R)
+- Trail stop to breakeven after +2%
+
+## Position Sizing
+- Max 5% of portfolio per trade ($10,000 on $200K paper account)
+- Max 3 concurrent NVDA positions
+
+## Notes
+- Best during earnings season and AI catalyst periods
+- Avoid trading first 15 min after market open (whipsaw risk)
+`,
+  },
+  {
+    user_id: "local",
+    title: "📈 SPY Mean Reversion",
+    folder: "strategies",
+    created_at: "2026-02-15T10:05:00.000Z",
+    updated_at: "2026-02-15T10:05:00.000Z",
+    content: `# SPY Mean Reversion Strategy
+
+## Overview
+Fade extreme moves in SPY when price deviates significantly from the 20-day moving average.
+
+## Entry Rules
+- SPY closes > 2 standard deviations below 20-day SMA → BUY
+- SPY closes > 2 standard deviations above 20-day SMA → SELL/SHORT
+- VIX > 25 confirms elevated fear (better long entries)
+
+## Exit Rules
+- **Stop Loss:** 1.5% adverse move
+- **Take Profit:** Return to 20-day SMA (mean reversion target)
+- Time stop: close after 5 trading days if target not hit
+
+## Position Sizing
+- $15,000 per trade
+- Max 2 simultaneous mean reversion trades
+
+## Notes
+- Works best in range-bound / choppy markets
+- Avoid during strong trend days (check ADX > 30 = trending)
+- Higher win rate but smaller gains per trade
+`,
+  },
+  {
+    user_id: "local",
+    title: "⚡ BTC Breakout Scalper",
+    folder: "strategies",
+    created_at: "2026-02-15T10:10:00.000Z",
+    updated_at: "2026-02-15T10:10:00.000Z",
+    content: `# BTC Breakout Scalper Strategy
+
+## Overview
+Scalp Bitcoin breakouts from consolidation zones on the 15-min chart. Crypto trades 24/7.
+
+## Entry Rules
+- BTC consolidates in < 1% range for 4+ hours
+- Volume spike > 2x average on breakout candle
+- Direction aligns with 4H trend (EMA 50)
+
+## Exit Rules
+- **Stop Loss:** 0.8% below entry
+- **Take Profit:** 1.6% above entry (2:1 R/R)
+- Partial exit: 50% at 1%, trail remainder
+
+## Position Sizing
+- $8,000 per trade
+- Max 5 trades per day
+
+## Notes
+- Best during US/EU overlap hours (8 AM - 12 PM ET)
+- Avoid around major macro events (FOMC, CPI)
+- Use Alpaca crypto paper trading (v1beta3 endpoint)
+`,
+  },
+];
+
 const seedDocs: Omit<DocumentItem, "id">[] = [
   {
     user_id: "local",
@@ -141,4 +236,32 @@ export function seedIfNeeded() {
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
   localStorage.setItem(SEED_KEY, "true");
+}
+
+const STRATEGIES_SEED_KEY = "second-brain-strategies-seeded";
+
+export function seedStrategiesIfNeeded() {
+  if (typeof window === "undefined") return;
+  if (localStorage.getItem(STRATEGIES_SEED_KEY)) return;
+
+  const existing = localStorage.getItem(STORAGE_KEY);
+  let docs: DocumentItem[] = [];
+  try {
+    docs = existing ? JSON.parse(existing) : [];
+  } catch {}
+
+  // Skip if user already has strategy docs
+  if (docs.some((d) => d.folder === "strategies")) {
+    localStorage.setItem(STRATEGIES_SEED_KEY, "true");
+    return;
+  }
+
+  const newDocs: DocumentItem[] = strategyDocs.map((d) => ({
+    ...d,
+    id: crypto.randomUUID(),
+  }));
+
+  docs.push(...newDocs);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+  localStorage.setItem(STRATEGIES_SEED_KEY, "true");
 }

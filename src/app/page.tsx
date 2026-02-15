@@ -9,7 +9,7 @@ import SplitPanel from "@/components/SplitPanel";
 import type { PanelTarget } from "@/components/SplitPanel";
 import TradingWidgets from "@/components/TradingWidgets";
 import { useDocuments } from "@/hooks/useDocuments";
-import { seedIfNeeded } from "@/lib/seedDocuments";
+import { seedIfNeeded, seedStrategiesIfNeeded } from "@/lib/seedDocuments";
 
 export default function Home() {
   const {
@@ -30,6 +30,7 @@ export default function Home() {
 
   useEffect(() => {
     seedIfNeeded();
+    seedStrategiesIfNeeded();
   }, []);
 
   const hasDocument = selected !== null;
