@@ -52,10 +52,12 @@ function MiniChart({ symbol }: { symbol: string }) {
 
 export default function TradingWidgets() {
   return (
-    <div className="grid grid-cols-3 gap-2 max-w-3xl mx-auto">
+    <div className="grid grid-cols-5 gap-2">
+      <MiniChart symbol="TVC:GOLD" />
       <MiniChart symbol="NASDAQ:TSLA" />
       <MiniChart symbol="NASDAQ:QQQ" />
       <MiniChart symbol="BITSTAMP:BTCUSD" />
+      <MiniChart symbol="AMEX:SPY" />
     </div>
   );
 }
