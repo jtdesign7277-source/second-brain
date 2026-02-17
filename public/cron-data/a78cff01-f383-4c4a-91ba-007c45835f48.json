@@ -1,0 +1,7 @@
+{
+  "id": "a78cff01-f383-4c4a-91ba-007c45835f48",
+  "title": "\ud83d\udccc Stratify Development \u2014 Critical Rules",
+  "content": "# CRITICAL RULES \u2014 Stratify Development\n\n## Jeff's Location & Timezone\n- **Location**: Boston, Massachusetts\n- **Timezone**: Eastern Time (ET)\n- **NEVER assume market holidays without verifying the actual calendar**\n- US stock market hours: 9:30 AM - 4:00 PM ET\n- Pre-market: 4:00 AM - 9:30 AM ET\n- After-hours: 4:00 PM - 8:00 PM ET\n\n## Data Rules\n- **NEVER use polling/setInterval for market data**\n- **ALWAYS use Alpaca WebSocket streaming** for ALL price data\n- Jeff pays $22,000+ for Alpaca SIP feed \u2014 polling is unacceptable\n- This applies to: watchlist, ticker bar, Markets page, backtesting, everything\n\n## Deployment Rules\n- Never deploy from local \u2014 local repo may be out of sync\n- Only deploy via Vercel Dashboard or GitHub pushes\n- Codex handles code changes, pushes to GitHub, Vercel auto-deploys\n\nLast updated: February 17, 2026\n",
+  "folder": "critical-rules",
+  "created_at": "2026-02-17T13:20:30.000Z"
+}
