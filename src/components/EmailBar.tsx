@@ -46,7 +46,7 @@ export default function EmailBar({
 
       <button
         type="button"
-        onClick={() => onOpenPanel?.("market-intel")}
+        onClick={() => onOpenPanel?.("cron-jobs")}
         className="group flex items-center gap-2.5 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-5 py-2.5 text-sm text-zinc-300 transition hover:border-emerald-500/50 hover:text-emerald-400"
       >
         <svg
@@ -57,9 +57,10 @@ export default function EmailBar({
           strokeWidth={1.5}
           className="h-4 w-4 text-zinc-500 transition group-hover:text-emerald-400"
         >
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
         </svg>
-        Market Intel
+        Cron Jobs
       </button>
 
       <button

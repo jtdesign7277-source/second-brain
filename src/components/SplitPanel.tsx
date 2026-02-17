@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw, Send, CheckCircle, Maximize2, X, DollarSign } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Repeat2, BarChart3, RefreshCw, Send, CheckCircle, Maximize2, X, DollarSign, ChevronDown, ChevronRight } from "lucide-react";
 import TradeDashboard from "./TradeDashboard";
 import clsx from "clsx";
 
-export type PanelTarget = "x" | "email" | "market-intel" | "trading" | null;
+export type PanelTarget = "x" | "email" | "cron-jobs" | "trading" | null;
 
 type Tweet = {
   id: string;
@@ -360,11 +360,32 @@ function EmailCompose() {
   );
 }
 
-/* ── Market Intel Feed ── */
-function MarketIntelFeed() {
-  const [content, setContent] = useState<string>("");
-  const [title, setTitle] = useState<string>("");
+/* ── Cron Jobs Feed ── */
+type CronDoc = {
+  id: string;
+  title: string;
+  content: string;
+  folder: string;
+  created_at: string;
+};
+
+const FOLDER_META: Record<string, { emoji: string; label: string; color: string }> = {
+  "cron:market-intel": { emoji: "📊", label: "Market Intel", color: "text-amber-400" },
+  "cron:x-engagement": { emoji: "🐦", label: "X Engagement", color: "text-sky-400" },
+  "cron:daily-summary": { emoji: "📝", label: "Daily Summary", color: "text-violet-400" },
+  "cron:trade-log": { emoji: "💰", label: "Trade Log", color: "text-emerald-400" },
+  "cron:weekly-recap": { emoji: "📺", label: "Weekly Recap", color: "text-rose-400" },
+  "critical-rules": { emoji: "📌", label: "Critical Rules", color: "text-red-400" },
+};
+
+function folderMeta(folder: string) {
+  return FOLDER_META[folder] ?? { emoji: "⚡", label: folder.replace("cron:", ""), color: "text-zinc-400" };
+}
+
+function CronJobsFeed() {
+  const [docs, setDocs] = useState<CronDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -372,22 +393,14 @@ function MarketIntelFeed() {
     return () => clearInterval(id);
   }, []);
 
-  const fetchIntel = useCallback(async () => {
+  const fetchDocs = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/documents");
       if (!res.ok) return;
       const data = await res.json();
-      const intelDocs = (data.documents ?? [])
-        .filter((d: { folder: string }) => d.folder === "cron:market-intel")
-        .sort(
-          (a: { created_at: string }, b: { created_at: string }) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-      if (intelDocs.length > 0) {
-        setContent(intelDocs[0].content);
-        setTitle(intelDocs[0].title);
-      }
+      // All docs, newest first (API already returns newest first)
+      setDocs(data.documents ?? []);
     } catch {
       // silent
     } finally {
@@ -396,10 +409,10 @@ function MarketIntelFeed() {
   }, []);
 
   useEffect(() => {
-    fetchIntel();
-    const id = setInterval(fetchIntel, 30 * 60 * 1000);
+    fetchDocs();
+    const id = setInterval(fetchDocs, 2 * 60 * 1000); // refresh every 2 min
     return () => clearInterval(id);
-  }, [fetchIntel]);
+  }, [fetchDocs]);
 
   const formattedTime = now.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -408,6 +421,17 @@ function MarketIntelFeed() {
     hour12: true,
     timeZone: "America/New_York",
   });
+
+  const timeAgo = (dateStr: string) => {
+    const diff = now.getTime() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  };
 
   const renderLine = (line: string, i: number) => {
     if (line.startsWith("# "))
@@ -452,39 +476,67 @@ function MarketIntelFeed() {
     <div className="flex h-full flex-col">
       {/* Live clock bar */}
       <div className="flex items-center gap-2 border-b border-zinc-800/50 px-3 py-1.5">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
         <span className="text-[10px] font-mono text-emerald-400">{formattedTime} ET</span>
+        <span className="text-[10px] text-zinc-600 ml-auto">{docs.length} runs</span>
         <button
           type="button"
-          onClick={fetchIntel}
+          onClick={fetchDocs}
           disabled={loading}
-          className="ml-auto flex items-center gap-1 text-[10px] text-zinc-600 transition hover:text-zinc-300"
+          className="flex items-center gap-1 text-[10px] text-zinc-600 transition hover:text-zinc-300"
         >
           <RefreshCw className={clsx("h-2.5 w-2.5", loading && "animate-spin")} />
-          Refresh
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
-        {loading && !content ? (
+      {/* Job list */}
+      <div className="flex-1 overflow-y-auto">
+        {loading && docs.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="h-4 w-4 animate-spin text-zinc-600" />
           </div>
-        ) : content ? (
-          <div>{content.split("\n").map(renderLine)}</div>
-        ) : (
+        ) : docs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-zinc-600">
-            <p className="text-xs">No intel yet — waiting for next scan</p>
+            <p className="text-xs">No cron outputs yet</p>
           </div>
+        ) : (
+          docs.map((doc) => {
+            const meta = folderMeta(doc.folder);
+            const expanded = expandedId === doc.id;
+            return (
+              <div key={doc.id} className="border-b border-zinc-800/30">
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expanded ? null : doc.id)}
+                  className="flex items-start gap-2 w-full text-left px-3 py-2.5 hover:bg-zinc-900/50 transition"
+                >
+                  <span className="text-sm mt-px shrink-0">{meta.emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={clsx("text-[10px] font-semibold", meta.color)}>{meta.label}</span>
+                      <span className="text-[9px] text-zinc-600">{timeAgo(doc.created_at)}</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1 leading-relaxed">
+                      {doc.title}
+                    </p>
+                  </div>
+                  {expanded ? (
+                    <ChevronDown className="h-3.5 w-3.5 text-zinc-600 mt-1 shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 text-zinc-600 mt-1 shrink-0" />
+                  )}
+                </button>
+                {expanded && (
+                  <div className="px-3 pb-3">
+                    <div className="rounded-lg bg-zinc-900/50 border border-zinc-800/50 p-3 max-h-[60vh] overflow-y-auto">
+                      {doc.content.split("\n").map(renderLine)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-zinc-800/50 px-3 py-1.5">
-        <span className="text-[9px] text-zinc-600">
-          Sources: Yahoo · Reuters · CoinDesk · Reddit · HN · ESPN
-        </span>
       </div>
     </div>
   );
@@ -494,7 +546,7 @@ function MarketIntelFeed() {
 /* ── Panel labels ── */
 function panelLabel(target: NonNullable<PanelTarget>) {
   if (target === "x") return "@stratify_hq";
-  if (target === "market-intel") return "Market Intel";
+  if (target === "cron-jobs") return "Cron Jobs";
   if (target === "trading") return "Paper Trading";
   return "Compose";
 }
@@ -506,10 +558,11 @@ function PanelIcon({ target, className }: { target: NonNullable<PanelTarget>; cl
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
       </svg>
     );
-  if (target === "market-intel")
+  if (target === "cron-jobs")
     return (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className || "h-3.5 w-3.5"}>
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
       </svg>
     );
   if (target === "trading")
@@ -524,7 +577,7 @@ function PanelIcon({ target, className }: { target: NonNullable<PanelTarget>; cl
 
 function PanelContent({ target, expanded }: { target: NonNullable<PanelTarget>; expanded?: boolean }) {
   if (target === "x") return expanded ? <XFeedExpanded /> : <XFeed />;
-  if (target === "market-intel") return <MarketIntelFeed />;
+  if (target === "cron-jobs") return <CronJobsFeed />;
   if (target === "trading") return <TradeDashboard />;
   return <EmailCompose />;
 }
