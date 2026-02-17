@@ -744,7 +744,7 @@ export function ChatFull() {
         </div>
       </div>
 
-      {/* Right half — Market Intel Feed */}
+      {/* Right half — Cron Jobs Feed */}
       <div className="w-1/2 h-full border-l border-zinc-800/50">
         <MarketIntelFeed />
       </div>
