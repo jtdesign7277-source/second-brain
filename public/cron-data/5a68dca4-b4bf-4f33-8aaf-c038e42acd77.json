@@ -1,0 +1,7 @@
+{
+  "id": "5a68dca4-b4bf-4f33-8aaf-c038e42acd77",
+  "title": "\ud83d\udcfa Weekly Recap \u2014 February 22, 2026",
+  "content": "# Weekly Recap Generated \u2014 February 22, 2026\n\n## \u2705 Newsletter\n- **Title:** Supreme Court Smacks Down Trump Tariffs as AI Panic Sells Cybersecurity\n- **Path:** `public/newsletters/newsletter-22-02-2026.md`\n- **Length:** 3,183 chars\n- **Status:** Generated & deployed\n\n## \ud83c\udfac Sophia Video\n- **Script:** Generated (1,349 chars)\n- **Path:** `public/sophia-recaps/sophia-recap-22-02-2026.txt`\n- **HeyGen Video:** In progress (still generating)\n- **Status:** Script deployed, video pending\n\n## \ud83d\udcdd Summary\nThe weekly market recap for Feb 16-22 covered:\n- Supreme Court strikes down Trump reciprocal tariffs (6-3)\n- GDP collapse to 1.4% vs 2.5% expected (stagflation concerns)\n- Bitcoin consolidating around 68K with retail accumulation\n- Blue Owl liquidity crisis as private credit warning signal\n- Stripe Minions (AI coding agents) gaining traction\n\n## \ud83d\ude80 Deployment\n- Committed to GitHub: `460361f`\n- Pushed to main branch\n- Live on stratify-black.vercel.app\n\nHeyGen video generation is still in progress. MP4 will be committed separately once complete.\n",
+  "folder": "cron:weekly-recap",
+  "created_at": "2026-02-22T23:07:28.000Z"
+}
